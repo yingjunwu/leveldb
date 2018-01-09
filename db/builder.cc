@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
 #include "db/builder.h"
 
 #include "db/filename.h"
@@ -36,6 +37,7 @@ Status BuildTable(const std::string& dbname,
     meta->smallest.DecodeFrom(iter->key());
     for (; iter->Valid(); iter->Next()) {
       Slice key = iter->key();
+      std::cout << "key = " << key.ToString() << std::endl;
       meta->largest.DecodeFrom(key);
       builder->Add(key, iter->value());
     }

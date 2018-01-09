@@ -4,6 +4,7 @@
 
 #include "db/db_impl.h"
 
+#include <iostream>
 #include <algorithm>
 #include <set>
 #include <string>
@@ -684,9 +685,11 @@ void DBImpl::BackgroundCall() {
 }
 
 void DBImpl::BackgroundCompaction() {
+  std::cout << "do background compaction" << std::endl;
   mutex_.AssertHeld();
 
   if (imm_ != NULL) {
+    std::cout << "compact mem table !!! " << std::endl;
     CompactMemTable();
     return;
   }
@@ -885,6 +888,9 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
 }
 
 Status DBImpl::DoCompactionWork(CompactionState* compact) {
+  
+  std::cout << "do compaction work" << std::endl;
+
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
@@ -919,6 +925,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       const uint64_t imm_start = env_->NowMicros();
       mutex_.Lock();
       if (imm_ != NULL) {
+        std::cout << "compact memtable in line 928" << std::endl;
         CompactMemTable();
         bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
       }
@@ -1206,6 +1213,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     return w.status;
   }
 
+  // std::cout << "line 1209" << std::endl;
   // May temporarily unlock and wait.
   Status status = MakeRoomForWrite(my_batch == NULL);
   uint64_t last_sequence = versions_->LastSequence();
@@ -1328,6 +1336,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
     } else if (
         allow_delay &&
         versions_->NumLevelFiles(0) >= config::kL0_SlowdownWritesTrigger) {
+      std::cout << "line 1333" << std::endl;
       // We are getting close to hitting a hard limit on the number of
       // L0 files.  Rather than delaying a single write by several
       // seconds when we hit the hard limit, start delaying each
@@ -1340,18 +1349,22 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       mutex_.Lock();
     } else if (!force &&
                (mem_->ApproximateMemoryUsage() <= options_.write_buffer_size)) {
+      // std::cout << "line 1346" << std::endl;
       // There is room in current memtable
       break;
     } else if (imm_ != NULL) {
+      std::cout << "line 1350" << std::endl;
       // We have filled up the current memtable, but the previous
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
       bg_cv_.Wait();
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
+      std::cout << "line 1356" << std::endl;
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       bg_cv_.Wait();
     } else {
+      std::cout << "line 1361" << std::endl;
       // Attempt to switch to a new memtable and trigger compaction of old
       assert(versions_->PrevLogNumber() == 0);
       uint64_t new_log_number = versions_->NewFileNumber();
