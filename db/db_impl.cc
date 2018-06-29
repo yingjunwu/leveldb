@@ -488,15 +488,17 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
 
 Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
                                 Version* base) {
+  std::cout << "Write level0 table" << std::endl;
   mutex_.AssertHeld();
   const uint64_t start_micros = env_->NowMicros();
   FileMetaData meta;
   meta.number = versions_->NewFileNumber();
+  std::cout << "new file number = " << meta.number << std::endl;
   pending_outputs_.insert(meta.number);
   Iterator* iter = mem->NewIterator();
   Log(options_.info_log, "Level-0 table #%llu: started",
       (unsigned long long) meta.number);
-
+  std::cout << "begin building table..." << std::endl;
   Status s;
   {
     mutex_.Unlock();
@@ -524,7 +526,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     edit->AddFile(level, meta.number, meta.file_size,
                   meta.smallest, meta.largest);
   }
-
+  std::cout << "pick level = " << level << std::endl;
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
@@ -626,6 +628,7 @@ Status DBImpl::TEST_CompactMemTable() {
     // Wait until the compaction completes
     MutexLock l(&mutex_);
     while (imm_ != NULL && bg_error_.ok()) {
+      std::cout << "here??" << std::endl;
       bg_cv_.Wait();
     }
     if (imm_ != NULL) {
@@ -704,8 +707,8 @@ void DBImpl::BackgroundCompaction() {
     if (c != NULL) {
       manual_end = c->input(0, c->num_input_files(0) - 1)->largest;
     }
-    Log(options_.info_log,
-        "Manual compaction at level-%d from %s .. %s; will stop at %s\n",
+    // Log(options_.info_log,
+    printf("Manual compaction at level-%d from %s .. %s; will stop at %s\n",
         m->level,
         (m->begin ? m->begin->DebugString().c_str() : "(begin)"),
         (m->end ? m->end->DebugString().c_str() : "(end)"),

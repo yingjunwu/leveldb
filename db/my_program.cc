@@ -1,7 +1,17 @@
 #include <iostream>
 #include <cassert>
 #include "leveldb/db.h"
+#include "db_impl.h"
 
+
+  int NumTableFilesAtLevel(leveldb::DB* db, int level) {
+    std::string property;
+        db->GetProperty("leveldb.num-files-at-level" + std::to_string(level),
+                         &property);
+    return atoi(property.c_str());
+  }
+
+/*
 int main(int argc, char** argv) {
   assert(argc == 2);
   int iter = atoi(argv[1]);
@@ -26,4 +36,45 @@ int main(int argc, char** argv) {
 
   delete db;
   db = nullptr;
+}
+*/
+
+int main(int argc, char** argv) {
+  leveldb::DB* db;
+  leveldb::Options options;
+  options.create_if_missing = true;
+  leveldb::Status status = leveldb::DB::Open(options, "/tmp/testdb", &db);
+  assert(status.ok());
+
+  std::string small = "1";
+  std::string large = "50";
+
+  leveldb::Status s;
+  s = db->Put(leveldb::WriteOptions(), small, "begin");
+  s = db->Put(leveldb::WriteOptions(), large, "end");
+  reinterpret_cast<leveldb::DBImpl*>(db)->TEST_CompactMemTable();
+
+  for (size_t i = 0; i < leveldb::config::kNumLevels; ++i) {
+    std::cout << "NumTableFilesAtLevel " << i << " = " << NumTableFilesAtLevel(db, i) << std::endl;
+  }
+
+
+  small = "6";
+  large = "90";
+
+  s = db->Put(leveldb::WriteOptions(), small, "begin");
+  s = db->Put(leveldb::WriteOptions(), large, "end");
+  reinterpret_cast<leveldb::DBImpl*>(db)->TEST_CompactMemTable();
+
+  for (size_t i = 0; i < leveldb::config::kNumLevels; ++i) {
+    std::cout << "NumTableFilesAtLevel " << i << " = " << NumTableFilesAtLevel(db, i) << std::endl;
+  }
+
+  reinterpret_cast<leveldb::DBImpl*>(db)->TEST_CompactRange(2, nullptr, nullptr);
+
+
+  for (size_t i = 0; i < leveldb::config::kNumLevels; ++i) {
+    std::cout << "NumTableFilesAtLevel " << i << " = " << NumTableFilesAtLevel(db, i) << std::endl;
+  }
+
 }

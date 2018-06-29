@@ -19,6 +19,7 @@
 #include <deque>
 #include <limits>
 #include <set>
+#include <iostream>
 #include "leveldb/env.h"
 #include "leveldb/slice.h"
 #include "port/port.h"
@@ -428,6 +429,7 @@ class PosixEnv : public Env {
 
   virtual Status NewWritableFile(const std::string& fname,
                                  WritableFile** result) {
+    std::cout << "posix env new writable file" << std::endl;
     Status s;
     int fd = open(fname.c_str(), O_TRUNC | O_WRONLY | O_CREAT, 0644);
     if (fd < 0) {
