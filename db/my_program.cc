@@ -50,8 +50,8 @@ int main(int argc, char** argv) {
 
   leveldb::Status s;
 
-  std::string small = "7";
-  std::string large = "80";
+  std::string small = "1";
+  std::string large = "60";
 
   s = db->Put(leveldb::WriteOptions(), small, "begin");
   s = db->Put(leveldb::WriteOptions(), large, "end");
@@ -62,8 +62,8 @@ int main(int argc, char** argv) {
   }
 
 
-  small = "1";
-  large = "60";
+  small = "2";
+  large = "80";
 
   s = db->Put(leveldb::WriteOptions(), small, "begin");
   s = db->Put(leveldb::WriteOptions(), large, "end");
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 
   // reinterpret_cast<leveldb::DBImpl*>(db)->TEST_CompactRange(2, &start_slice, &end_slice);
 
-  reinterpret_cast<leveldb::DBImpl*>(db)->TEST_CompactRange(2, nullptr, nullptr);
+  reinterpret_cast<leveldb::DBImpl*>(db)->TEST_CompactRange(1, nullptr, nullptr);
 
   for (size_t i = 0; i < leveldb::config::kNumLevels; ++i) {
     std::cout << "NumTableFilesAtLevel " << i << " = " << NumTableFilesAtLevel(db, i) << std::endl;
