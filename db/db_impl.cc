@@ -897,7 +897,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
-  Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
+  printf("Compacting %d@%d + %d@%d files",
       compact->compaction->num_input_files(0),
       compact->compaction->level(),
       compact->compaction->num_input_files(1),
@@ -922,6 +922,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   std::string current_user_key;
   bool has_current_user_key = false;
   SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
+  std::cout << "===========" << std::endl;
   for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {
     // Prioritize immutable compaction work
     if (has_imm_.NoBarrier_Load() != NULL) {
@@ -937,6 +938,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     }
 
     Slice key = input->key();
+    std::cout << "input key = " << key.ToString() << std::endl;
+
     if (compact->compaction->ShouldStopBefore(key) &&
         compact->builder != NULL) {
       status = FinishCompactionOutputFile(compact, input);
@@ -1130,6 +1133,14 @@ Status DBImpl::Get(const ReadOptions& options,
 
   MemTable* mem = mem_;
   MemTable* imm = imm_;
+
+  if (mem == nullptr) {
+    std::cout << "mem is null" << std::endl;
+  }
+  if (imm == nullptr) {
+    std::cout << "imm is null" << std::endl;
+  }
+
   Version* current = versions_->current();
   mem->Ref();
   if (imm != NULL) imm->Ref();
@@ -1143,12 +1154,16 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
+
     if (mem->Get(lkey, value, &s)) {
+      std::cout << "lookup memtable!" << std::endl;
       // Done
     } else if (imm != NULL && imm->Get(lkey, value, &s)) {
+      std::cout << "lookup imm!" << std::endl;
       // Done
     } else {
       s = current->Get(options, lkey, value, &stats);
+      std::cout << "lookup current..." << std::endl;
       have_stat_update = true;
     }
     mutex_.Lock();

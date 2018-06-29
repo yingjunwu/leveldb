@@ -7,6 +7,7 @@
 #include "leveldb/comparator.h"
 #include "leveldb/iterator.h"
 #include "table/iterator_wrapper.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -49,6 +50,7 @@ class MergingIterator : public Iterator {
   }
 
   virtual void Seek(const Slice& target) {
+    std::cout << "merger seek" << std::endl;
     for (int i = 0; i < n_; i++) {
       children_[i].Seek(target);
     }

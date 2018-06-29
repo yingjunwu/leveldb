@@ -12,6 +12,7 @@
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/logging.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -163,6 +164,7 @@ class Block::Iter : public Iterator {
   }
 
   virtual void Seek(const Slice& target) {
+    std::cout << "seek....... " << target.ToString() << std::endl;
     // Binary search in restart array to find the last restart point
     // with a key < target
     uint32_t left = 0;

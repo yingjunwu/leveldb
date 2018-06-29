@@ -14,6 +14,7 @@
 #include "table/format.h"
 #include "util/coding.h"
 #include "util/crc32c.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -96,6 +97,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   if (r->num_entries > 0) {
     assert(r->options.comparator->Compare(key, Slice(r->last_key)) > 0);
   }
+  std::cout << "compare: " << key.ToString() << " " << r->last_key << " " << (r->options.comparator->Compare(key, Slice(r->last_key)) > 0) << std::endl;
 
   if (r->pending_index_entry) {
     assert(r->data_block.empty());

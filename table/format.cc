@@ -10,6 +10,8 @@
 #include "util/coding.h"
 #include "util/crc32c.h"
 
+#include <iostream>
+
 namespace leveldb {
 
 void BlockHandle::EncodeTo(std::string* dst) const {
@@ -77,9 +79,11 @@ Status ReadBlock(RandomAccessFile* file,
   Slice contents;
   Status s = file->Read(handle.offset(), n + kBlockTrailerSize, &contents, buf);
   if (!s.ok()) {
+    std::cout << "read block failed!" << std::endl;
     delete[] buf;
     return s;
   }
+  std::cout << "read block success" << std::endl;
   if (contents.size() != n + kBlockTrailerSize) {
     delete[] buf;
     return Status::Corruption("truncated block read");

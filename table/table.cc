@@ -15,6 +15,8 @@
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
 
+#include <iostream>
+
 namespace leveldb {
 
 struct Table::Rep {
@@ -171,6 +173,7 @@ Iterator* Table::BlockReader(void* arg,
   // can add more features in the future.
 
   if (s.ok()) {
+    std::cout << "in block reader, s is ok" << std::endl;
     BlockContents contents;
     if (block_cache != NULL) {
       char cache_key_buffer[16];
@@ -179,15 +182,20 @@ Iterator* Table::BlockReader(void* arg,
       Slice key(cache_key_buffer, sizeof(cache_key_buffer));
       cache_handle = block_cache->Lookup(key);
       if (cache_handle != NULL) {
+        std::cout << "line 185" << std::endl;
         block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
       } else {
+        std::cout << "line 188" << std::endl;
         s = ReadBlock(table->rep_->file, options, handle, &contents);
         if (s.ok()) {
+          std::cout << "line 191" << std::endl;
           block = new Block(contents);
           if (contents.cachable && options.fill_cache) {
             cache_handle = block_cache->Insert(
                 key, block, block->size(), &DeleteCachedBlock);
           }
+        } else {
+          std::cout << "s.ok is false" << std::endl;
         }
       }
     } else {
@@ -200,6 +208,7 @@ Iterator* Table::BlockReader(void* arg,
 
   Iterator* iter;
   if (block != NULL) {
+    std::cout << "new iter" << std::endl;
     iter = block->NewIterator(table->rep_->options.comparator);
     if (cache_handle == NULL) {
       iter->RegisterCleanup(&DeleteBlock, block, NULL);
@@ -207,6 +216,7 @@ Iterator* Table::BlockReader(void* arg,
       iter->RegisterCleanup(&ReleaseBlock, block_cache, cache_handle);
     }
   } else {
+    std::cout << "new error iter" << std::endl;
     iter = NewErrorIterator(s);
   }
   return iter;
@@ -231,12 +241,16 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
     if (filter != NULL &&
         handle.DecodeFrom(&handle_value).ok() &&
         !filter->KeyMayMatch(handle.offset(), k)) {
+      std::cout << "not found!!!" << std::endl;
       // Not found
     } else {
+      std::cout << "find something!!!" << std::endl;
       Iterator* block_iter = BlockReader(this, options, iiter->value());
       block_iter->Seek(k);
+      std::cout << "here...." << std::endl;
       if (block_iter->Valid()) {
         (*saver)(arg, block_iter->key(), block_iter->value());
+        std::cout << "block iter is valid: " << block_iter->key().ToString() << " " << block_iter->value().ToString() << std::endl;
       }
       s = block_iter->status();
       delete block_iter;

@@ -226,7 +226,8 @@ class PosixWritableFile : public WritableFile {
 
  public:
   PosixWritableFile(const std::string& fname, int fd)
-      : filename_(fname), fd_(fd), pos_(0) { }
+      : filename_(fname), fd_(fd), pos_(0) {
+      std::cout << "create new posix writable file: " << filename_ << std::endl; }
 
   ~PosixWritableFile() {
     if (fd_ >= 0) {

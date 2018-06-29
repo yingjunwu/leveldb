@@ -9,6 +9,8 @@
 #include "leveldb/table.h"
 #include "util/coding.h"
 
+#include <iostream>
+
 namespace leveldb {
 
 struct TableAndFile {
@@ -108,12 +110,16 @@ Status TableCache::Get(const ReadOptions& options,
                        const Slice& k,
                        void* arg,
                        void (*saver)(void*, const Slice&, const Slice&)) {
+  std::cout << "inside table cache get" << std::endl;
   Cache::Handle* handle = NULL;
   Status s = FindTable(file_number, file_size, &handle);
   if (s.ok()) {
+    std::cout << "s is ok!" << std::endl;
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
     s = t->InternalGet(options, k, arg, saver);
     cache_->Release(handle);
+  } else {
+    std::cout << "s is not ok!" << std::endl;
   }
   return s;
 }

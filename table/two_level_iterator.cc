@@ -8,6 +8,7 @@
 #include "table/block.h"
 #include "table/format.h"
 #include "table/iterator_wrapper.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -89,6 +90,7 @@ TwoLevelIterator::~TwoLevelIterator() {
 }
 
 void TwoLevelIterator::Seek(const Slice& target) {
+  std::cout << "two level iterator seek" << std::endl;
   index_iter_.Seek(target);
   InitDataBlock();
   if (data_iter_.iter() != NULL) data_iter_.Seek(target);

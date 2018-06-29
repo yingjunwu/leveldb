@@ -4,6 +4,7 @@
 
 #include "db/version_set.h"
 
+#include <iostream>
 #include <algorithm>
 #include <stdio.h>
 #include "db/filename.h"
@@ -350,6 +351,7 @@ Status Version::Get(const ReadOptions& options,
   FileMetaData* tmp2;
   for (int level = 0; level < config::kNumLevels; level++) {
     size_t num_files = files_[level].size();
+    std::cout << "level = " << level << ", num files = " << num_files << std::endl;
     if (num_files == 0) continue;
 
     // Get the list of files to search in this level
@@ -371,8 +373,10 @@ Status Version::Get(const ReadOptions& options,
       files = &tmp[0];
       num_files = tmp.size();
     } else {
+      std::cout << "level is " << level << std::endl;
       // Binary search to find earliest index whose largest key >= ikey.
       uint32_t index = FindFile(vset_->icmp_, files_[level], ikey);
+      std::cout << "index = " << index << std::endl;
       if (index >= num_files) {
         files = NULL;
         num_files = 0;
@@ -382,9 +386,11 @@ Status Version::Get(const ReadOptions& options,
           // All of "tmp2" is past any data for user_key
           files = NULL;
           num_files = 0;
+          std::cout << "here.." << std::endl;
         } else {
           files = &tmp2;
           num_files = 1;
+          std::cout << "there..." << std::endl;
         }
       }
     }
@@ -408,6 +414,7 @@ Status Version::Get(const ReadOptions& options,
       s = vset_->table_cache_->Get(options, f->number, f->file_size,
                                    ikey, &saver, SaveValue);
       if (!s.ok()) {
+        std::cout << "not ok!" << std::endl;
         return s;
       }
       switch (saver.state) {
@@ -1413,7 +1420,9 @@ Compaction* VersionSet::CompactRange(
     const InternalKey* end) {
   std::vector<FileMetaData*> inputs;
   current_->GetOverlappingInputs(level, begin, end, &inputs);
+  std::cout << "level = " << level << ", input size = " << inputs.size() << std::endl;
   if (inputs.empty()) {
+    std::cout << "return nullptr!!!!" << std::endl;
     return NULL;
   }
 
