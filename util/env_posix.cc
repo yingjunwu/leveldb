@@ -27,6 +27,8 @@
 #include "util/posix_logger.h"
 #include "util/env_posix_test_helper.h"
 
+#include <iostream>
+
 namespace leveldb {
 
 namespace {
@@ -225,7 +227,9 @@ class PosixWritableFile : public WritableFile {
 
  public:
   PosixWritableFile(const std::string& fname, int fd)
-      : filename_(fname), fd_(fd), pos_(0) { }
+      : filename_(fname), fd_(fd), pos_(0) {
+        // std::cout << "create writable filename = " << fname << std::endl;
+  }
 
   ~PosixWritableFile() {
     if (fd_ >= 0) {

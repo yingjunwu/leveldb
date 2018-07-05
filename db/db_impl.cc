@@ -4,6 +4,7 @@
 
 #include "db/db_impl.h"
 
+#include <iostream>
 #include <algorithm>
 #include <set>
 #include <string>
@@ -687,6 +688,7 @@ void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
   if (imm_ != NULL) {
+    std::cout << "call background compaction: persist mem table" << std::endl;
     CompactMemTable();
     return;
   }
@@ -714,10 +716,13 @@ void DBImpl::BackgroundCompaction() {
   Status status;
   if (c == NULL) {
     // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove()) {
+  // } else if (!is_manual && c->IsTrivialMove()) {
+  } else if (!is_manual) {
+    
     // Move file to next level
     assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
+    std::cout << "trivial compact, level: " << c->level() << ", file number: " << f->number << std::endl;
     c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
                        f->smallest, f->largest);
@@ -888,6 +893,12 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   const uint64_t start_micros = env_->NowMicros();
   int64_t imm_micros = 0;  // Micros spent doing imm_ compactions
 
+  // printf("Begin compacting %d@%d + %d@%d files\n",
+  //     compact->compaction->num_input_files(0),
+  //     compact->compaction->level(),
+  //     compact->compaction->num_input_files(1),
+  //     compact->compaction->level() + 1);
+
   Log(options_.info_log,  "Compacting %d@%d + %d@%d files",
       compact->compaction->num_input_files(0),
       compact->compaction->level(),
@@ -1042,6 +1053,14 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   VersionSet::LevelSummaryStorage tmp;
   Log(options_.info_log,
       "compacted to: %s", versions_->LevelSummary(&tmp));
+
+
+  // printf("Finish compacting %d@%d + %d@%d files\n",
+  //     compact->compaction->num_input_files(0),
+  //     compact->compaction->level(),
+  //     compact->compaction->num_input_files(1),
+  //     compact->compaction->level() + 1);
+
   return status;
 }
 
@@ -1315,10 +1334,11 @@ WriteBatch* DBImpl::BuildBatchGroup(Writer** last_writer) {
 
 // REQUIRES: mutex_ is held
 // REQUIRES: this thread is currently at the front of the writer queue
+// force == false
 Status DBImpl::MakeRoomForWrite(bool force) {
   mutex_.AssertHeld();
   assert(!writers_.empty());
-  bool allow_delay = !force;
+  bool allow_delay = !force; // allow_delay == true
   Status s;
   while (true) {
     if (!bg_error_.ok()) {
@@ -1328,6 +1348,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
     } else if (
         allow_delay &&
         versions_->NumLevelFiles(0) >= config::kL0_SlowdownWritesTrigger) {
+      // std::cout << "line 1333" << std::endl;
       // We are getting close to hitting a hard limit on the number of
       // L0 files.  Rather than delaying a single write by several
       // seconds when we hit the hard limit, start delaying each
@@ -1340,18 +1361,22 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       mutex_.Lock();
     } else if (!force &&
                (mem_->ApproximateMemoryUsage() <= options_.write_buffer_size)) {
+      // std::cout << "line 1346" << std::endl;
       // There is room in current memtable
       break;
     } else if (imm_ != NULL) {
+      // std::cout << "line 1350" << std::endl;
       // We have filled up the current memtable, but the previous
       // one is still being compacted, so we wait.
       Log(options_.info_log, "Current memtable full; waiting...\n");
       bg_cv_.Wait();
     } else if (versions_->NumLevelFiles(0) >= config::kL0_StopWritesTrigger) {
+      // std::cout << "line 1356" << std::endl;
       // There are too many level-0 files.
       Log(options_.info_log, "Too many L0 files; waiting...\n");
       bg_cv_.Wait();
     } else {
+      // std::cout << "line 1361" << std::endl;
       // Attempt to switch to a new memtable and trigger compaction of old
       assert(versions_->PrevLogNumber() == 0);
       uint64_t new_log_number = versions_->NewFileNumber();
