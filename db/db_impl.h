@@ -5,6 +5,10 @@
 #ifndef STORAGE_LEVELDB_DB_DB_IMPL_H_
 #define STORAGE_LEVELDB_DB_DB_IMPL_H_
 
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#include <thread>
 #include <deque>
 #include <set>
 #include "db/dbformat.h"
@@ -27,6 +31,24 @@ class DBImpl : public DB {
  public:
   DBImpl(const Options& options, const std::string& dbname);
   virtual ~DBImpl();
+
+  int64_t begin_micros_;
+  size_t issued_kv_count_;
+  size_t committed_kv_count_;
+  bool is_monitoring_;
+  std::thread *monitor_thread_;
+
+  void write_monitor() {
+
+    std::ofstream ofs("write_monitor.txt", std::ofstream::out);
+
+    while(is_monitoring_) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      ofs << env_->NowMicros() - begin_micros_ << " " << issued_kv_count_ << " " << committed_kv_count_ << std::endl;
+    }
+
+    ofs.close();
+  }
 
   // Implementations of the DB interface
   virtual Status Put(const WriteOptions&, const Slice& key, const Slice& value);
@@ -176,19 +198,26 @@ class DBImpl : public DB {
   // Per level compaction stats.  stats_[level] stores the stats for
   // compactions that produced data for the specified "level".
   struct CompactionStats {
+    int64_t level;
+    int64_t begin_micros;
+    int64_t end_micros;
     int64_t micros;
     int64_t bytes_read;
     int64_t bytes_written;
 
-    CompactionStats() : micros(0), bytes_read(0), bytes_written(0) { }
+    CompactionStats() : level(0), begin_micros(0), end_micros(0), micros(0), bytes_read(0), bytes_written(0) { }
 
     void Add(const CompactionStats& c) {
       this->micros += c.micros;
       this->bytes_read += c.bytes_read;
       this->bytes_written += c.bytes_written;
     }
+
   };
+
   CompactionStats stats_[config::kNumLevels];
+
+  std::vector<CompactionStats> stats_log_;
 
   // No copying allowed
   DBImpl(const DBImpl&);
@@ -197,6 +226,7 @@ class DBImpl : public DB {
   const Comparator* user_comparator() const {
     return internal_comparator_.user_comparator();
   }
+
 };
 
 // Sanitize db options.  The caller should delete result.info_log if

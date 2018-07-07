@@ -58,10 +58,14 @@ class LEVELDB_EXPORT WriteBatch {
   };
   Status Iterate(Handler* handler) const;
 
+ public:
+  size_t kv_count_;
+
  private:
   friend class WriteBatchInternal;
 
   std::string rep_;  // See comment in write_batch.cc for the format of rep_
+
 
   // Intentionally copyable
 };
