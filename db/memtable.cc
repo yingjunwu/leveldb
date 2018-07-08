@@ -8,6 +8,7 @@
 #include "leveldb/env.h"
 #include "leveldb/iterator.h"
 #include "util/coding.h"
+#include <iostream>
 
 namespace leveldb {
 
@@ -22,10 +23,12 @@ MemTable::MemTable(const InternalKeyComparator& cmp)
     : comparator_(cmp),
       refs_(0),
       table_(comparator_, &arena_) {
+  art_tree_init(&container_);
 }
 
 MemTable::~MemTable() {
   assert(refs_ == 0);
+  art_tree_destroy(&container_);
 }
 
 size_t MemTable::ApproximateMemoryUsage() { return arena_.MemoryUsage(); }

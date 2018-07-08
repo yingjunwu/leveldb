@@ -9,7 +9,9 @@
 #include "leveldb/db.h"
 #include "db/dbformat.h"
 #include "db/skiplist.h"
+#include "db/art.h"
 #include "util/arena.h"
+
 
 namespace leveldb {
 
@@ -77,6 +79,7 @@ class MemTable {
   int refs_;
   Arena arena_;
   Table table_;
+  art_tree container_;
 
   // No copying allowed
   MemTable(const MemTable&);
