@@ -1186,11 +1186,47 @@ static void recursive_merge(art_tree *t, art_node *n) {
 
         unsigned char *key = l->kvs;
         for (size_t i = 0; i < l->val_count; ++i) {
-            ValueT ret = *(ValueT*)(l->kvs+l->key_len);
+            ValueT ret = *(ValueT*)(l->kvs+l->key_len+(i*sizeof(ValueT)));
             art_insert(t, key, l->key_len, ret);
         }
         return;
     }
+
+    int idx, res;
+    switch (n->type) {
+        case NODE4:
+            for (int i=0; i < n->num_children; i++) {
+                recursive_merge(t, ((art_node4*)n)->children[i]);
+            }
+            break;
+
+        case NODE16:
+            for (int i=0; i < n->num_children; i++) {
+                recursive_merge(t, ((art_node16*)n)->children[i]);
+            }
+            break;
+
+        case NODE48:
+            for (int i=0; i < 256; i++) {
+                idx = ((art_node48*)n)->keys[i];
+                if (!idx) continue;
+
+                recursive_merge(t, ((art_node48*)n)->children[idx-1]);
+            }
+            break;
+
+        case NODE256:
+            for (int i=0; i < 256; i++) {
+                if (!((art_node256*)n)->children[i]) continue;
+
+                recursive_merge(t, ((art_node256*)n)->children[i]);
+            }
+            break;
+
+        default:
+            abort();
+    }
+    return;
 }
 
 void art_merge(art_tree *t, art_tree *t1) {
