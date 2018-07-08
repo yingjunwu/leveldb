@@ -721,7 +721,7 @@ void DBImpl::BackgroundCompaction() {
   mutex_.AssertHeld();
 
   if (imm_ != NULL) {
-    std::cout << "call background compaction: persist mem table" << std::endl;
+    // std::cout << "call background compaction: persist mem table" << std::endl;
     CompactMemTable();
     return;
   }
@@ -755,7 +755,7 @@ void DBImpl::BackgroundCompaction() {
     // Move file to next level
     assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
-    std::cout << "trivial compact, level: " << c->level() << ", file number: " << f->number << std::endl;
+    // std::cout << "trivial compact, level: " << c->level() << ", file number: " << f->number << std::endl;
     c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
                        f->smallest, f->largest);
