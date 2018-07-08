@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -446,6 +447,8 @@ class Benchmark {
         benchmarks = sep + 1;
       }
 
+      std::cout << "name = " << name.ToString() << std::endl;
+
       // Reset parameters that may be overridden below
       num_ = FLAGS_num;
       reads_ = (FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads);
@@ -534,6 +537,7 @@ class Benchmark {
                   name.ToString().c_str());
           method = NULL;
         } else {
+          std::cout << "destroy old db..." << std::endl;
           delete db_;
           db_ = NULL;
           DestroyDB(FLAGS_db, Options());
@@ -542,6 +546,7 @@ class Benchmark {
       }
 
       if (method != NULL) {
+        std::cout << "num_threads = " << num_threads << ", name = " << name.ToString() << std::endl;
         RunBenchmark(num_threads, name, method);
       }
     }

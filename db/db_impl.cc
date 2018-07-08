@@ -5,6 +5,7 @@
 #include "db/db_impl.h"
 
 #include <iostream>
+#include <fstream>
 #include <algorithm>
 #include <set>
 #include <string>
@@ -144,6 +145,14 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
 
   versions_ = new VersionSet(dbname_, &options_, table_cache_,
                              &internal_comparator_);
+
+
+  begin_micros_ = env_->NowMicros();
+
+  committed_kv_count_ = 0;
+  is_monitoring_ = true;
+  monitor_thread_ = new std::thread(&DBImpl::write_monitor, this);
+
 }
 
 DBImpl::~DBImpl() {
@@ -173,6 +182,22 @@ DBImpl::~DBImpl() {
   if (owns_cache_) {
     delete options_.block_cache;
   }
+
+  /// YINGJUN: print out compact info
+  std::ofstream ofs("compact.txt", std::ofstream::out);
+
+  for (auto & entry : stats_log_) {
+    ofs << entry.level << " " << (entry.begin_micros - begin_micros_) << " " << (entry.end_micros - begin_micros_) << " " << entry.micros << " " << entry.bytes_read << " " << entry.bytes_written << std::endl;
+  }
+
+  ofs.close();
+
+  is_monitoring_ = false;
+  monitor_thread_->join();
+
+  delete monitor_thread_;
+  monitor_thread_ = nullptr;
+
 }
 
 Status DBImpl::NewDB() {
@@ -526,9 +551,17 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   }
 
   CompactionStats stats;
-  stats.micros = env_->NowMicros() - start_micros;
+
+  stats.level = level;
+  stats.begin_micros = start_micros;
+  stats.end_micros = env_->NowMicros();
+  stats.micros = stats.end_micros - stats.begin_micros;
   stats.bytes_written = meta.file_size;
+
   stats_[level].Add(stats);
+
+  stats_log_.push_back(stats);
+
   return s;
 }
 
@@ -1031,7 +1064,12 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   input = NULL;
 
   CompactionStats stats;
-  stats.micros = env_->NowMicros() - start_micros - imm_micros;
+
+  stats.level = compact->compaction->level() + 1;
+  stats.begin_micros = start_micros + imm_micros;
+  stats.end_micros = env_->NowMicros();
+  stats.micros = stats.end_micros - stats.begin_micros;
+  // stats.micros = env_->NowMicros() - start_micros - imm_micros;
   for (int which = 0; which < 2; which++) {
     for (int i = 0; i < compact->compaction->num_input_files(which); i++) {
       stats.bytes_read += compact->compaction->input(which, i)->file_size;
@@ -1043,6 +1081,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
   mutex_.Lock();
   stats_[compact->compaction->level() + 1].Add(stats);
+
+  stats_log_.push_back(stats);
 
   if (status.ok()) {
     status = InstallCompactionResults(compact);
@@ -1211,6 +1251,7 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 }
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
+  issued_kv_count_ += my_batch->kv_count_;
   Writer w(&mutex_);
   w.batch = my_batch;
   w.sync = options.sync;
@@ -1222,6 +1263,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     w.cv.Wait();
   }
   if (w.done) {
+    committed_kv_count_ += my_batch->kv_count_;
     return w.status;
   }
 
@@ -1280,6 +1322,7 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
     writers_.front()->cv.Signal();
   }
 
+  committed_kv_count_ +=  my_batch->kv_count_;
   return status;
 }
 

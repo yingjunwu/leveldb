@@ -37,6 +37,7 @@ WriteBatch::Handler::~Handler() { }
 void WriteBatch::Clear() {
   rep_.clear();
   rep_.resize(kHeader);
+  kv_count_ = 0;
 }
 
 size_t WriteBatch::ApproximateSize() {
@@ -104,6 +105,7 @@ void WriteBatch::Put(const Slice& key, const Slice& value) {
   rep_.push_back(static_cast<char>(kTypeValue));
   PutLengthPrefixedSlice(&rep_, key);
   PutLengthPrefixedSlice(&rep_, value);
+  ++kv_count_;
 }
 
 void WriteBatch::Delete(const Slice& key) {
