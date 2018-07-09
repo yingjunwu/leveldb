@@ -33,7 +33,7 @@ class DBImpl : public DB {
   virtual ~DBImpl();
 
   int64_t begin_micros_;
-  size_t issued_kv_count_;
+  // size_t issued_kv_count_;
   size_t committed_kv_count_;
   bool is_monitoring_;
   std::thread *monitor_thread_;
@@ -42,9 +42,11 @@ class DBImpl : public DB {
 
     std::ofstream ofs("write_monitor.txt", std::ofstream::out);
 
+    size_t last_kv_count = 0;
     while(is_monitoring_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      ofs << env_->NowMicros() - begin_micros_ << " " << issued_kv_count_ << " " << committed_kv_count_ << std::endl;
+      ofs << env_->NowMicros() - begin_micros_ << " " << committed_kv_count_ << " " << (committed_kv_count_ - last_kv_count) << std::endl;
+      last_kv_count = committed_kv_count_;
     }
 
     ofs.close();

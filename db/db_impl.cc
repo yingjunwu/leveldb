@@ -1238,7 +1238,7 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 }
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
-  issued_kv_count_ += my_batch->kv_count_;
+  // issued_kv_count_ += my_batch->kv_count_;
   Writer w(&mutex_);
   w.batch = my_batch;
   w.sync = options.sync;
