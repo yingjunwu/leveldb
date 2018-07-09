@@ -32,9 +32,10 @@ class DBImpl : public DB {
   DBImpl(const Options& options, const std::string& dbname);
   virtual ~DBImpl();
 
-  int64_t begin_micros_;
-  // size_t issued_kv_count_;
+  // monitoring-related member variables
+  int64_t init_micros_;
   size_t committed_kv_count_;
+  size_t write_latency_;
   bool is_monitoring_;
   std::thread *monitor_thread_;
 
@@ -45,7 +46,7 @@ class DBImpl : public DB {
     size_t last_kv_count = 0;
     while(is_monitoring_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      ofs << env_->NowMicros() - begin_micros_ << " " << committed_kv_count_ / 10.0 << " " << (committed_kv_count_ - last_kv_count) / 10.0 << std::endl;
+      ofs << env_->NowMicros() - init_micros_ << " " << committed_kv_count_ / 10.0 << " " << (committed_kv_count_ - last_kv_count) / 10.0 << " " << write_latency_ << std::endl;
       last_kv_count = committed_kv_count_;
     }
 

@@ -88,7 +88,7 @@ template <class T,class V>
 static void ClipToRange(T* ptr, V minvalue, V maxvalue) {
   if (static_cast<V>(*ptr) > maxvalue) *ptr = maxvalue;
   if (static_cast<V>(*ptr) < minvalue) *ptr = minvalue;
-}
+} 
 Options SanitizeOptions(const std::string& dbname,
                         const InternalKeyComparator* icmp,
                         const InternalFilterPolicy* ipolicy,
@@ -130,7 +130,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
       bg_cv_(&mutex_),
       mem_(NULL),
       imm_(NULL),
-      logfile_(NULL),
+      logfile_(NULL), 
       logfile_number_(0),
       log_(NULL),
       seed_(0),
@@ -147,10 +147,12 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
                              &internal_comparator_);
 
 
-  begin_micros_ = env_->NowMicros();
-
+  // init monitoring-related member variables
+  init_micros_ = env_->NowMicros();
   committed_kv_count_ = 0;
+  write_latency_ = 0;
   is_monitoring_ = true;
+
   monitor_thread_ = new std::thread(&DBImpl::write_monitor, this);
 
 }
@@ -187,7 +189,7 @@ DBImpl::~DBImpl() {
   std::ofstream ofs("compact.txt", std::ofstream::out);
 
   for (auto & entry : stats_log_) {
-    ofs << entry.level << " " << (entry.begin_micros - begin_micros_) << " " << (entry.end_micros - begin_micros_) << " " << entry.micros << " " << entry.bytes_read << " " << entry.bytes_written << std::endl;
+    ofs << entry.level << " " << (entry.begin_micros - init_micros_) << " " << (entry.end_micros - init_micros_) << " " << entry.micros << " " << entry.bytes_read << " " << entry.bytes_written << std::endl;
   }
 
   ofs.close();
@@ -749,8 +751,9 @@ void DBImpl::BackgroundCompaction() {
   if (c == NULL) {
     // Nothing to do
   } else if (!is_manual && c->IsTrivialMove()) {
+  // } else if (!is_manual) {
     // Move file to next level
-    assert(c->num_input_files(0) == 1);
+    // assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
     c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
@@ -1238,8 +1241,12 @@ Status DBImpl::Delete(const WriteOptions& options, const Slice& key) {
 }
 
 Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
-  // issued_kv_count_ += my_batch->kv_count_;
   Writer w(&mutex_);
+
+  uint64_t write_start_micro, write_end_micro;
+
+  write_start_micro = env_->NowMicros();
+
   w.batch = my_batch;
   w.sync = options.sync;
   w.done = false;
@@ -1251,6 +1258,9 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   }
   if (w.done) {
     committed_kv_count_ += my_batch->kv_count_;
+
+    write_end_micro = env_->NowMicros();
+
     return w.status;
   }
 
@@ -1310,6 +1320,11 @@ Status DBImpl::Write(const WriteOptions& options, WriteBatch* my_batch) {
   }
 
   committed_kv_count_ +=  my_batch->kv_count_;
+
+  write_end_micro = env_->NowMicros();
+
+  write_latency_ = write_end_micro - write_start_micro;
+
   return status;
 }
 
