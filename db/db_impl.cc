@@ -948,21 +948,22 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   bool has_current_user_key = false;
   SequenceNumber last_sequence_for_key = kMaxSequenceNumber;
 
-  size_t input_count = 0;
+  // size_t input_count = 0;
   for (; input->Valid() && !shutting_down_.Acquire_Load(); ) {
     // Prioritize immutable compaction work
     if (has_imm_.NoBarrier_Load() != NULL) {
-      std::cout << "line 955" << std::endl;
+      // std::cout << "line 955: " << input_count << std::endl;
       const uint64_t imm_start = env_->NowMicros();
       mutex_.Lock();
       if (imm_ != NULL) {
+        // std::cout << "line 959: " << input_count << std::endl;
         CompactMemTable();
         bg_cv_.SignalAll();  // Wakeup MakeRoomForWrite() if necessary
       }
       mutex_.Unlock();
       imm_micros += (env_->NowMicros() - imm_start);
     }
-    ++input_count;
+    // ++input_count;
     Slice key = input->key();
     if (compact->compaction->ShouldStopBefore(key) &&
         compact->builder != NULL) {
@@ -1043,7 +1044,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
 
     input->Next();
   }
-  std::cout << "input count = " << input_count << std::endl;
+  // std::cout << "input count = " << input_count << std::endl;
 
   if (status.ok() && shutting_down_.Acquire_Load()) {
     status = Status::IOError("Deleting DB during compaction");
