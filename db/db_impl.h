@@ -199,6 +199,10 @@ class DBImpl : public DB {
   // compactions that produced data for the specified "level".
   struct CompactionStats {
     int64_t level;
+    // int64_t ckpt1;
+    // int64_t ckpt2;
+    // int64_t ckpt3;
+    // int64_t ckpt4;
     int64_t begin_micros;
     int64_t end_micros;
     int64_t micros;
