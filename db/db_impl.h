@@ -45,7 +45,7 @@ class DBImpl : public DB {
     size_t last_kv_count = 0;
     while(is_monitoring_) {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      ofs << env_->NowMicros() - begin_micros_ << " " << committed_kv_count_ << " " << (committed_kv_count_ - last_kv_count) << std::endl;
+      ofs << env_->NowMicros() - begin_micros_ << " " << committed_kv_count_ / 10.0 << " " << (committed_kv_count_ - last_kv_count) / 10.0 << std::endl;
       last_kv_count = committed_kv_count_;
     }
 
