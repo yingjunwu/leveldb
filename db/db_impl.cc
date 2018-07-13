@@ -1194,7 +1194,7 @@ Status DBImpl::Get(const ReadOptions& options,
   }
 
   if (have_stat_update && current->UpdateStats(stats)) {
-    MaybeScheduleCompaction();
+    // MaybeScheduleCompaction();
   }
   mem->Unref();
   if (imm != NULL) imm->Unref();
