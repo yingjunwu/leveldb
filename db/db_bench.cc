@@ -447,7 +447,7 @@ class Benchmark {
         benchmarks = sep + 1;
       }
 
-      std::cout << "name = " << name.ToString() << std::endl;
+      // std::cout << "name = " << name.ToString() << std::endl;
 
       // Reset parameters that may be overridden below
       num_ = FLAGS_num;
@@ -537,7 +537,7 @@ class Benchmark {
                   name.ToString().c_str());
           method = NULL;
         } else {
-          std::cout << "destroy old db..." << std::endl;
+          // std::cout << "destroy old db..." << std::endl;
           delete db_;
           db_ = NULL;
           DestroyDB(FLAGS_db, Options());
@@ -546,7 +546,7 @@ class Benchmark {
       }
 
       if (method != NULL) {
-        std::cout << "num_threads = " << num_threads << ", name = " << name.ToString() << std::endl;
+        // std::cout << "num_threads = " << num_threads << ", name = " << name.ToString() << std::endl;
         RunBenchmark(num_threads, name, method);
       }
     }

@@ -41,6 +41,7 @@ class DBImpl : public DB {
 
   void write_monitor() {
 
+    /// YINGJUN: print out compact info
     std::ofstream ofs("write_monitor.txt", std::ofstream::out);
 
     size_t last_kv_count = 0;
