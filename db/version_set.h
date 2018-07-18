@@ -15,6 +15,7 @@
 #ifndef STORAGE_LEVELDB_DB_VERSION_SET_H_
 #define STORAGE_LEVELDB_DB_VERSION_SET_H_
 
+#include <iostream>
 #include <map>
 #include <set>
 #include <vector>
@@ -188,7 +189,10 @@ class VersionSet {
   uint64_t ManifestFileNumber() const { return manifest_file_number_; }
 
   // Allocate and return a new file number
-  uint64_t NewFileNumber() { return next_file_number_++; }
+  uint64_t NewFileNumber() { 
+    // std::cout << "next file number = " << next_file_number_ << std::endl;
+    return next_file_number_++;
+  }
 
   // Arrange to reuse "file_number" unless a newer file number has
   // already been allocated.

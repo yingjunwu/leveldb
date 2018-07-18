@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
+
 #include "db/builder.h"
 
 #include "db/filename.h"
@@ -25,6 +27,7 @@ Status BuildTable(const std::string& dbname,
   iter->SeekToFirst();
 
   std::string fname = TableFileName(dbname, meta->number);
+  // std::cout << "filename = " << fname << std::endl;
   if (iter->Valid()) {
     WritableFile* file;
     s = env->NewWritableFile(fname, &file);
@@ -44,6 +47,7 @@ Status BuildTable(const std::string& dbname,
     s = builder->Finish();
     if (s.ok()) {
       meta->file_size = builder->FileSize();
+      // std::cout << "file size = " << meta->file_size << std::endl;
       assert(meta->file_size > 0);
     }
     delete builder;

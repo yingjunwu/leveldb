@@ -79,7 +79,7 @@ class MemTable {
   int refs_;
   Arena arena_;
   Table table_;
-  art_tree container_;
+  // art_tree container_;
 
   // No copying allowed
   MemTable(const MemTable&);
