@@ -151,9 +151,11 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
   init_micros_ = env_->NowMicros();
   committed_kv_count_ = 0;
   write_latency_ = 0;
-  is_monitoring_ = true;
 
-  monitor_thread_ = new std::thread(&DBImpl::write_monitor, this);
+  if (monitoring_flag_ == true) {
+    is_monitoring_ = true;
+    monitor_thread_ = new std::thread(&DBImpl::write_monitor, this);
+  }
 
 }
 
@@ -185,20 +187,22 @@ DBImpl::~DBImpl() {
     delete options_.block_cache;
   }
 
-  /// YINGJUN: print out compact info
-  std::ofstream ofs("compact.txt", std::ofstream::out);
+  if (monitoring_flag_ == true) {
+    /// YINGJUN: print out compact info
+    std::ofstream ofs("compact.txt", std::ofstream::out);
 
-  for (auto & entry : stats_log_) {
-    ofs << entry.level << " " << (entry.begin_micros - init_micros_) << " " << (entry.end_micros - init_micros_) << " " << entry.micros << " " << entry.bytes_read << " " << entry.bytes_written << std::endl;
+    for (auto & entry : stats_log_) {
+      ofs << entry.level << " " << (entry.begin_micros - init_micros_) << " " << (entry.end_micros - init_micros_) << " " << entry.micros << " " << entry.bytes_read << " " << entry.bytes_written << std::endl;
+    }
+
+    ofs.close();
+
+    is_monitoring_ = false;
+    monitor_thread_->join();
+
+    delete monitor_thread_;
+    monitor_thread_ = nullptr;
   }
-
-  ofs.close();
-
-  is_monitoring_ = false;
-  monitor_thread_->join();
-
-  delete monitor_thread_;
-  monitor_thread_ = nullptr;
 
 }
 

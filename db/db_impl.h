@@ -32,6 +32,8 @@ class DBImpl : public DB {
   DBImpl(const Options& options, const std::string& dbname);
   virtual ~DBImpl();
 
+  bool monitoring_flag_ = false;
+
   // monitoring-related member variables
   int64_t init_micros_;
   size_t committed_kv_count_;
