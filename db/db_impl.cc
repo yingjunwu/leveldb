@@ -753,10 +753,18 @@ void DBImpl::BackgroundCompaction() {
   }
 
   Status status;
+
+  bool is_trivial_move = true;
+  if (options_.is_tiering == false) {
+    is_trivial_move = c->IsTrivialMove();
+  } else {
+    is_trivial_move = true;
+  }
+
   if (c == NULL) {
     // Nothing to do
-  } else if (!is_manual && c->IsTrivialMove()) {
-  // } else if (!is_manual) {
+  // } else if (!is_manual && c->IsTrivialMove()) {
+  } else if (!is_manual && is_trivial_move) {
     // Move file to next level
     // assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
@@ -1192,7 +1200,7 @@ Status DBImpl::Get(const ReadOptions& options,
     } else if (imm != NULL && imm->Get(lkey, value, &s)) {
       // Done
     } else {
-      s = current->Get(options, lkey, value, &stats);
+      s = current->Get(options, lkey, value, &stats, options_.is_tiering);
       have_stat_update = true;
     }
     mutex_.Lock();

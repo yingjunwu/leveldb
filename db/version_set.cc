@@ -332,7 +332,8 @@ void Version::ForEachOverlapping(Slice user_key, Slice internal_key,
 Status Version::Get(const ReadOptions& options,
                     const LookupKey& k,
                     std::string* value,
-                    GetStats* stats) {
+                    GetStats* stats, 
+                    const bool is_tiering) {
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();
@@ -354,8 +355,10 @@ Status Version::Get(const ReadOptions& options,
 
     // Get the list of files to search in this level
     FileMetaData* const* files = &files_[level][0];
-    if (level == 0) {
-      // Level-0 files may overlap each other.  Find all files that
+
+    if (is_tiering == true || (is_tiering == false && level == 0)) {
+
+      // if tiering, or if level-0, files may overlap each other.  Find all files that
       // overlap user_key and process them in order from newest to oldest.
       tmp.reserve(num_files);
       for (uint32_t i = 0; i < num_files; i++) {
@@ -388,6 +391,7 @@ Status Version::Get(const ReadOptions& options,
         }
       }
     }
+
 
     for (uint32_t i = 0; i < num_files; ++i) {
       if (last_file_read != NULL && stats->seek_file == NULL) {
