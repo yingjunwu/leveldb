@@ -507,6 +507,8 @@ int Version::PickLevelForMemTableOutput(
     const Slice& smallest_user_key,
     const Slice& largest_user_key) {
   int level = 0;
+  // check whether there's overlap in the 0th level.
+  // if overlap exists, then pick the 0th level.
   if (!OverlapInLevel(0, &smallest_user_key, &largest_user_key)) {
     // Push to next level if there is no overlap in next level,
     // and the #bytes overlapping in the level after that are limited.
@@ -1324,6 +1326,7 @@ Compaction* VersionSet::PickCompaction() {
       c->inputs_[0].push_back(current_->files_[level][0]);
     }
   } else if (seek_compaction) {
+    assert(false);
     level = current_->file_to_compact_level_;
     c = new Compaction(options_, level);
     c->inputs_[0].push_back(current_->file_to_compact_);
@@ -1336,6 +1339,7 @@ Compaction* VersionSet::PickCompaction() {
 
   // Files in level 0 may overlap each other, so pick up all overlapping ones
   if (level == 0) {
+    std::cout << "level == 0, input size = " << c->inputs_[0].size() << std::endl;
     InternalKey smallest, largest;
     GetRange(c->inputs_[0], &smallest, &largest);
     // Note that the next call will discard the file we placed in
@@ -1343,7 +1347,14 @@ Compaction* VersionSet::PickCompaction() {
     // which will include the picked file.
     current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0]);
     assert(!c->inputs_[0].empty());
+    std::cout << "level == 0, now input size = " << c->inputs_[0].size() << std::endl;
   }
+
+  // the code above is to setup the file in the first to-be-compacted layer
+  ////////////////////////////////////////////////////
+  // the code below is to setup the file in the second to-be-compacted layer
+
+  std::cout << c->num_input_files(0) << " " << c->num_input_files(1) << std::endl;
 
   SetupOtherInputs(c);
 
@@ -1353,6 +1364,7 @@ Compaction* VersionSet::PickCompaction() {
 void VersionSet::SetupOtherInputs(Compaction* c) {
   const int level = c->level();
   InternalKey smallest, largest;
+  // get the range in the first layer
   GetRange(c->inputs_[0], &smallest, &largest);
 
   current_->GetOverlappingInputs(level+1, &smallest, &largest, &c->inputs_[1]);

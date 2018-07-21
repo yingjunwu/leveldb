@@ -736,6 +736,7 @@ void DBImpl::BackgroundCompaction() {
   bool is_manual = (manual_compaction_ != NULL);
   InternalKey manual_end;
   if (is_manual) {
+    assert(false);
     ManualCompaction* m = manual_compaction_;
     c = versions_->CompactRange(m->level, m->begin, m->end);
     m->done = (c == NULL);
@@ -750,6 +751,7 @@ void DBImpl::BackgroundCompaction() {
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
   } else {
     c = versions_->PickCompaction();
+    std::cout << c->num_input_files(0) << " " << c->num_input_files(1) << std::endl;
   }
 
   Status status;

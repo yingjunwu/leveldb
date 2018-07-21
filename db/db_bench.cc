@@ -115,6 +115,9 @@ static bool FLAGS_reuse_logs = false;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 
+// If true, the database uses tiering compaction strategy
+static bool FLAGS_is_tiering = false;
+
 namespace leveldb {
 
 namespace {
@@ -723,6 +726,8 @@ class Benchmark {
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
+    options.is_tiering = FLAGS_is_tiering;
+
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
@@ -963,6 +968,8 @@ int main(int argc, char** argv) {
   FLAGS_max_file_size = leveldb::Options().max_file_size;
   FLAGS_block_size = leveldb::Options().block_size;
   FLAGS_open_files = leveldb::Options().max_open_files;
+  FLAGS_is_tiering = leveldb::Options().is_tiering;
+
   std::string default_db_path;
 
   for (int i = 1; i < argc; i++) {
@@ -1004,6 +1011,9 @@ int main(int argc, char** argv) {
       FLAGS_open_files = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
+    } else if (sscanf(argv[i], "--is_tiering=%d%c", &n, &junk) == 1 &&
+               (n == 0 || n == 1)) {
+      FLAGS_is_tiering = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
