@@ -94,7 +94,8 @@ class Version {
       int level,
       const InternalKey* begin,         // NULL means before all keys
       const InternalKey* end,           // NULL means after all keys
-      std::vector<FileMetaData*>* inputs);
+      std::vector<FileMetaData*>* inputs,
+      const bool is_tiering = false);
 
   // Returns true iff some file in the specified level overlaps
   // some part of [*smallest_user_key,*largest_user_key].
@@ -232,7 +233,9 @@ class VersionSet {
   // Returns NULL if there is no compaction to be done.
   // Otherwise returns a pointer to a heap-allocated object that
   // describes the compaction.  Caller should delete the result.
-  Compaction* PickCompaction();
+  // This function is designed for leveling compaction scheme.
+  // It picks only one file from upper level (except it is level 0)
+  Compaction* PickCompaction(const bool is_tiering);
 
   // Return a compaction object for compacting the range [begin,end] in
   // the specified level.  Returns NULL if there is nothing in that

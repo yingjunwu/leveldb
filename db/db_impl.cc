@@ -750,8 +750,7 @@ void DBImpl::BackgroundCompaction() {
         (m->end ? m->end->DebugString().c_str() : "(end)"),
         (m->done ? "(end)" : manual_end.DebugString().c_str()));
   } else {
-    c = versions_->PickCompaction();
-    std::cout << c->num_input_files(0) << " " << c->num_input_files(1) << std::endl;
+    c = versions_->PickCompaction(options_.is_tiering);
   }
 
   Status status;

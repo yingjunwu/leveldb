@@ -538,7 +538,8 @@ void Version::GetOverlappingInputs(
     int level,
     const InternalKey* begin,
     const InternalKey* end,
-    std::vector<FileMetaData*>* inputs) {
+    std::vector<FileMetaData*>* inputs,
+    const bool is_tiering) {
   assert(level >= 0);
   assert(level < config::kNumLevels);
   inputs->clear();
@@ -1298,12 +1299,13 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
   return result;
 }
 
-Compaction* VersionSet::PickCompaction() {
+Compaction* VersionSet::PickCompaction(const bool is_tiering) {
   Compaction* c;
   int level;
 
   // We prefer compactions triggered by too much data in a level over
   // the compactions triggered by seeks.
+  // Yingjun: for now, we do not consider compactions triggered by seeks.
   const bool size_compaction = (current_->compaction_score_ >= 1);
   const bool seek_compaction = (current_->file_to_compact_ != NULL);
   if (size_compaction) {
@@ -1313,6 +1315,11 @@ Compaction* VersionSet::PickCompaction() {
     c = new Compaction(options_, level);
 
     // Pick the first file that comes after compact_pointer_[level]
+
+    // tiering allows runs with overlapping key range stored
+    // in the same level. So we first pick only one file from 
+    // the to-be-compacted level, and then pick all the files
+    // with overlapping key range with it.
     for (size_t i = 0; i < current_->files_[level].size(); i++) {
       FileMetaData* f = current_->files_[level][i];
       if (compact_pointer_[level].empty() ||
@@ -1337,26 +1344,34 @@ Compaction* VersionSet::PickCompaction() {
   c->input_version_ = current_;
   c->input_version_->Ref();
 
-  // Files in level 0 may overlap each other, so pick up all overlapping ones
-  if (level == 0) {
-    std::cout << "level == 0, input size = " << c->inputs_[0].size() << std::endl;
+  if (is_tiering == true) {
+    // if use tiering compaction, then files in the same level
+    // may overlap each other, so pick up all overlapping ones.
     InternalKey smallest, largest;
     GetRange(c->inputs_[0], &smallest, &largest);
-    // Note that the next call will discard the file we placed in
-    // c->inputs_[0] earlier and replace it with an overlapping set
-    // which will include the picked file.
-    current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0]);
-    assert(!c->inputs_[0].empty());
-    std::cout << "level == 0, now input size = " << c->inputs_[0].size() << std::endl;
+
+
+  } else {
+
+    // Files in level 0 may overlap each other, so pick up all overlapping ones
+    if (level == 0) {
+      InternalKey smallest, largest;
+      // the code above puts only one file into inputs.
+      assert(c->inputs_[0].size() == 0);
+      GetRange(c->inputs_[0], &smallest, &largest);
+      // Note that the next call will discard the file we placed in
+      // c->inputs_[0] earlier and replace it with an overlapping set
+      // which will include the picked file.
+      current_->GetOverlappingInputs(0, &smallest, &largest, &c->inputs_[0]);
+      assert(!c->inputs_[0].empty());
+    }
+
+    // the code above is to setup the file in the first to-be-compacted layer
+    ////////////////////////////////////////////////////
+    // the code below is to setup the file in the second to-be-compacted layer
+
+    SetupOtherInputs(c);
   }
-
-  // the code above is to setup the file in the first to-be-compacted layer
-  ////////////////////////////////////////////////////
-  // the code below is to setup the file in the second to-be-compacted layer
-
-  std::cout << c->num_input_files(0) << " " << c->num_input_files(1) << std::endl;
-
-  SetupOtherInputs(c);
 
   return c;
 }
