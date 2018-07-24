@@ -523,6 +523,8 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   mutex_.AssertHeld();
   const uint64_t start_micros = env_->NowMicros();
   FileMetaData meta;
+  meta.fast_table_ = new MyHashTable();
+
   meta.number = versions_->NewFileNumber();
   pending_outputs_.insert(meta.number);
   Iterator* iter = mem->NewIterator();
@@ -554,7 +556,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size,
-                  meta.smallest, meta.largest);
+                  meta.smallest, meta.largest, meta.fast_table_);
   }
 
   CompactionStats stats;
@@ -564,6 +566,10 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   stats.end_micros = env_->NowMicros();
   stats.micros = stats.end_micros - stats.begin_micros;
   stats.bytes_written = meta.file_size;
+
+  if (meta.fast_table_ != nullptr) {
+    stats.tuple_count = meta.fast_table_->size();
+  }
 
   stats_[level].Add(stats);
 
@@ -771,7 +777,7 @@ void DBImpl::BackgroundCompaction() {
     FileMetaData* f = c->input(0, 0);
     c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest);
+                       f->smallest, f->largest, f->fast_table_);
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -930,7 +936,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
     const CompactionState::Output& out = compact->outputs[i];
     compact->compaction->edit()->AddFile(
         level + 1,
-        out.number, out.file_size, out.smallest, out.largest);
+        out.number, out.file_size, out.smallest, out.largest, nullptr);
   }
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
@@ -1492,13 +1498,14 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       if (stats_[level].micros > 0 || files > 0) {
         snprintf(
             buf, sizeof(buf),
-            "%3d %8d %8.0f %9.0f %8.0f %9.0f\n",
+            "%3d %8d %8.0f %9.0f %8.0f %9.0f %d\n",
             level,
             files,
             versions_->NumLevelBytes(level) / 1048576.0,
             stats_[level].micros / 1e6,
             stats_[level].bytes_read / 1048576.0,
-            stats_[level].bytes_written / 1048576.0);
+            stats_[level].bytes_written / 1048576.0, 
+            stats_[level].tuple_count);
         value->append(buf);
       }
     }

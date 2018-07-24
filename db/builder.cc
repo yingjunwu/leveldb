@@ -27,7 +27,6 @@ Status BuildTable(const std::string& dbname,
   iter->SeekToFirst();
 
   std::string fname = TableFileName(dbname, meta->number);
-  // std::cout << "filename = " << fname << std::endl;
   if (iter->Valid()) {
     WritableFile* file;
     s = env->NewWritableFile(fname, &file);
@@ -41,13 +40,16 @@ Status BuildTable(const std::string& dbname,
       Slice key = iter->key();
       meta->largest.DecodeFrom(key);
       builder->Add(key, iter->value());
+      // insert key value pair into hash table
+      if (meta->fast_table_ != nullptr) {
+        (*meta->fast_table_)[std::string(key.data(), key.size() - 8)] = iter->value();
+      }
     }
 
     // Finish and check for builder errors
     s = builder->Finish();
     if (s.ok()) {
       meta->file_size = builder->FileSize();
-      // std::cout << "file size = " << meta->file_size << std::endl;
       assert(meta->file_size > 0);
     }
     delete builder;

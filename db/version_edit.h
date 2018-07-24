@@ -6,11 +6,14 @@
 #define STORAGE_LEVELDB_DB_VERSION_EDIT_H_
 
 #include <set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include "db/dbformat.h"
 
 namespace leveldb {
+
+typedef std::unordered_map<std::string, Slice> MyHashTable;
 
 class VersionSet;
 
@@ -21,6 +24,8 @@ struct FileMetaData {
   uint64_t file_size;         // File size in bytes
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
+  
+  MyHashTable *fast_table_; // yingjun: hash table  
 
   FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
 };
@@ -62,12 +67,14 @@ class VersionEdit {
   void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest) {
+               const InternalKey& largest,
+               MyHashTable *fast_table) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
     f.smallest = smallest;
     f.largest = largest;
+    f.fast_table_ = fast_table;
     new_files_.push_back(std::make_pair(level, f));
   }
 
