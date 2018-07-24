@@ -1320,6 +1320,7 @@ Compaction* VersionSet::PickCompaction(const bool is_tiering) {
     level = current_->compaction_level_;
     assert(level >= 0);
     assert(level+1 < config::kNumLevels);
+    // create Compaction instance. The level is chosen beforehand.
     c = new Compaction(options_, level);
 
     // Pick the first file that comes after compact_pointer_[level]
@@ -1332,6 +1333,7 @@ Compaction* VersionSet::PickCompaction(const bool is_tiering) {
       FileMetaData* f = current_->files_[level][i];
       if (compact_pointer_[level].empty() ||
           icmp_.Compare(f->largest.Encode(), compact_pointer_[level]) > 0) {
+        // get only one file
         c->inputs_[0].push_back(f);
         break;
       }
@@ -1341,13 +1343,15 @@ Compaction* VersionSet::PickCompaction(const bool is_tiering) {
       c->inputs_[0].push_back(current_->files_[level][0]);
     }
   } else if (seek_compaction) {
-    assert(false);
+    assert(false); // yingjun: disable seek_compaction in ur ge
     level = current_->file_to_compact_level_;
     c = new Compaction(options_, level);
     c->inputs_[0].push_back(current_->file_to_compact_);
   } else {
     return NULL;
   }
+
+  // now there must be only one file in c->inputs_[0].
 
   c->input_version_ = current_;
   c->input_version_->Ref();
@@ -1389,17 +1393,20 @@ void VersionSet::SetupOtherInputs(Compaction* c) {
   InternalKey smallest, largest;
   // get the range in the first layer
   GetRange(c->inputs_[0], &smallest, &largest);
-
+  
+  // Store in c->inputs_[1] all files in level+1 that overlap [smallest,largest]
   current_->GetOverlappingInputs(level+1, &smallest, &largest, &c->inputs_[1]);
 
   // Get entire range covered by compaction
   InternalKey all_start, all_limit;
+  // get the minimal range that covers all entires in c->inputs_[0] and c->inputs_[1]
   GetRange2(c->inputs_[0], c->inputs_[1], &all_start, &all_limit);
 
   // See if we can grow the number of inputs in "level" without
   // changing the number of "level+1" files we pick up.
   if (!c->inputs_[1].empty()) {
     std::vector<FileMetaData*> expanded0;
+    // Store in expanded0 all files in level that overlap [all_start,all_limit]
     current_->GetOverlappingInputs(level, &all_start, &all_limit, &expanded0);
     const int64_t inputs0_size = TotalFileSize(c->inputs_[0]);
     const int64_t inputs1_size = TotalFileSize(c->inputs_[1]);

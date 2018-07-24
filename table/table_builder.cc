@@ -44,6 +44,8 @@ struct TableBuilder::Rep {
 
   std::string compressed_output;
 
+  MyFastTable *fast_table_;
+
   Rep(const Options& opt, WritableFile* f)
       : options(opt),
         index_block_options(opt),
@@ -57,6 +59,7 @@ struct TableBuilder::Rep {
                      : new FilterBlockBuilder(opt.filter_policy)),
         pending_index_entry(false) {
     index_block_options.block_restart_interval = 1;
+    fast_table_ = new MyFastTable();
   }
 };
 
@@ -120,6 +123,9 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   if (estimated_block_size >= r->options.block_size) {
     Flush();
   }
+
+  // yingjun: insert key value pair into hash table
+  (*r->fast_table_)[std::string(key.data(), key.size() - 8)] = value;
 }
 
 void TableBuilder::Flush() {
@@ -267,6 +273,10 @@ uint64_t TableBuilder::NumEntries() const {
 
 uint64_t TableBuilder::FileSize() const {
   return rep_->offset;
+}
+
+MyFastTable* TableBuilder::FastTable() const {
+  return rep_->fast_table_;
 }
 
 }  // namespace leveldb

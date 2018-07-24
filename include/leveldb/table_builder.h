@@ -13,6 +13,7 @@
 #ifndef STORAGE_LEVELDB_INCLUDE_TABLE_BUILDER_H_
 #define STORAGE_LEVELDB_INCLUDE_TABLE_BUILDER_H_
 
+#include <unordered_map>
 #include <stdint.h>
 #include "leveldb/export.h"
 #include "leveldb/options.h"
@@ -23,6 +24,8 @@ namespace leveldb {
 class BlockBuilder;
 class BlockHandle;
 class WritableFile;
+
+typedef std::unordered_map<std::string, Slice> MyFastTable;
 
 class LEVELDB_EXPORT TableBuilder {
  public:
@@ -74,6 +77,8 @@ class LEVELDB_EXPORT TableBuilder {
   // Size of the file generated so far.  If invoked after a successful
   // Finish() call, returns the size of the final generated file.
   uint64_t FileSize() const;
+
+  MyFastTable* FastTable() const;
 
  private:
   bool ok() const { return status().ok(); }

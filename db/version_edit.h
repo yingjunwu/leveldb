@@ -13,8 +13,6 @@
 
 namespace leveldb {
 
-typedef std::unordered_map<std::string, Slice> MyHashTable;
-
 class VersionSet;
 
 struct FileMetaData {
@@ -25,7 +23,7 @@ struct FileMetaData {
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
   
-  MyHashTable *fast_table_; // yingjun: hash table  
+  MyFastTable *fast_table_; // yingjun: hash table  
 
   FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
 };
@@ -68,7 +66,7 @@ class VersionEdit {
                uint64_t file_size,
                const InternalKey& smallest,
                const InternalKey& largest,
-               MyHashTable *fast_table) {
+               MyFastTable *fast_table) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;

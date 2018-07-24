@@ -64,6 +64,7 @@ struct DBImpl::CompactionState {
     uint64_t number;
     uint64_t file_size;
     InternalKey smallest, largest;
+    MyFastTable *fast_table_;
   };
   std::vector<Output> outputs;
 
@@ -523,7 +524,6 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   mutex_.AssertHeld();
   const uint64_t start_micros = env_->NowMicros();
   FileMetaData meta;
-  meta.fast_table_ = new MyHashTable();
 
   meta.number = versions_->NewFileNumber();
   pending_outputs_.insert(meta.number);
@@ -886,6 +886,10 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   }
   const uint64_t current_bytes = compact->builder->FileSize();
   compact->current_output()->file_size = current_bytes;
+
+  // yingjun: transfer the fast_table pointer to compact->outputs.
+  compact->current_output()->fast_table_ = compact->builder->FastTable();
+
   compact->total_bytes += current_bytes;
   delete compact->builder;
   compact->builder = NULL;
@@ -936,7 +940,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
     const CompactionState::Output& out = compact->outputs[i];
     compact->compaction->edit()->AddFile(
         level + 1,
-        out.number, out.file_size, out.smallest, out.largest, nullptr);
+        out.number, out.file_size, out.smallest, out.largest, out.fast_table_);
   }
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }
@@ -995,7 +999,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
     }
 
     // Handle key/value, add to state, etc.
-    bool drop = false;
+    bool drop = false; // this variable determines whether we need to drop the key
     if (!ParseInternalKey(key, &ikey)) {
       // Do not hide error keys
       current_user_key.clear();
@@ -1039,9 +1043,10 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
         (int)last_sequence_for_key, (int)compact->smallest_snapshot);
 #endif
 
-    if (!drop) {
-      // Open output file if necessary
+    if (!drop) { 
+      // if this key should not be dropped, then...
       if (compact->builder == NULL) {
+        // Open output file if necessary
         status = OpenCompactionOutputFile(compact);
         if (!status.ok()) {
           break;
@@ -1054,6 +1059,7 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       compact->builder->Add(key, input->value());
 
       // Close output file if it is big enough
+      // yingjun: for now, each level's max file size is the same
       if (compact->builder->FileSize() >=
           compact->compaction->MaxOutputFileSize()) {
         status = FinishCompactionOutputFile(compact, input);
