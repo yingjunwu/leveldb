@@ -567,10 +567,6 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   stats.micros = stats.end_micros - stats.begin_micros;
   stats.bytes_written = meta.file_size;
 
-  if (meta.fast_table_ != nullptr) {
-    stats.tuple_count = meta.fast_table_->size();
-  }
-
   stats_[level].Add(stats);
 
   stats_log_.push_back(stats);
@@ -775,7 +771,7 @@ void DBImpl::BackgroundCompaction() {
     // Move file to next level
     // assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
-    c->edit()->DeleteFile(c->level(), f->number);
+    c->edit()->DeleteFile(c->level(), f->number, nullptr);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
                        f->smallest, f->largest, f->fast_table_);
     status = versions_->LogAndApply(c->edit(), &mutex_);
@@ -1504,14 +1500,13 @@ bool DBImpl::GetProperty(const Slice& property, std::string* value) {
       if (stats_[level].micros > 0 || files > 0) {
         snprintf(
             buf, sizeof(buf),
-            "%3d %8d %8.0f %9.0f %8.0f %9.0f %d\n",
+            "%3d %8d %8.0f %9.0f %8.0f %9.0f\n",
             level,
             files,
             versions_->NumLevelBytes(level) / 1048576.0,
             stats_[level].micros / 1e6,
             stats_[level].bytes_read / 1048576.0,
-            stats_[level].bytes_written / 1048576.0, 
-            stats_[level].tuple_count);
+            stats_[level].bytes_written / 1048576.0);
         value->append(buf);
       }
     }

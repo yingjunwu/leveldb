@@ -2219,7 +2219,7 @@ void BM_LogAndApply(int iters, int num_base_files) {
 
   for (int i = 0; i < iters; i++) {
     VersionEdit vedit;
-    vedit.DeleteFile(2, fnum);
+    vedit.DeleteFile(2, fnum, nullptr);
     InternalKey start(MakeKey(2*fnum), 1, kTypeValue);
     InternalKey limit(MakeKey(2*fnum+1), 1, kTypeDeletion);
     vedit.AddFile(2, fnum++, 1 /* file size */, start, limit, nullptr);

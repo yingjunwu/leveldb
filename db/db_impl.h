@@ -210,15 +210,15 @@ class DBImpl : public DB {
     int64_t micros;
     int64_t bytes_read;
     int64_t bytes_written;
-    int64_t tuple_count;
+    // int64_t tuple_count;
 
-    CompactionStats() : level(0), begin_micros(0), end_micros(0), micros(0), bytes_read(0), bytes_written(0), tuple_count(0) { }
+    CompactionStats() : level(0), begin_micros(0), end_micros(0), micros(0), bytes_read(0), bytes_written(0) { }
 
     void Add(const CompactionStats& c) {
       this->micros += c.micros;
       this->bytes_read += c.bytes_read;
       this->bytes_written += c.bytes_written;
-      this->tuple_count += c.tuple_count;
+      // this->tuple_count += c.tuple_count;
     }
 
   };

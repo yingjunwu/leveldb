@@ -60,6 +60,7 @@ struct TableBuilder::Rep {
         pending_index_entry(false) {
     index_block_options.block_restart_interval = 1;
     fast_table_ = new MyFastTable();
+    // fast_table_ = nullptr;
   }
 };
 
@@ -125,7 +126,9 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   }
 
   // yingjun: insert key value pair into hash table
-  (*r->fast_table_)[std::string(key.data(), key.size() - 8)] = value;
+  if (r->fast_table_ != nullptr) {
+    (*r->fast_table_)[std::string(key.data(), key.size() - 8)] = value; 
+  }
 }
 
 void TableBuilder::Flush() {
