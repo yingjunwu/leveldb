@@ -19,6 +19,8 @@
 #include "port/port.h"
 #include "port/thread_annotations.h"
 
+#include "db/time_measurer.h"
+
 namespace leveldb {
 
 class MemTable;
@@ -224,6 +226,8 @@ class DBImpl : public DB {
   CompactionStats stats_[config::kNumLevels];
 
   std::vector<CompactionStats> stats_log_;
+
+  TimeMeasurer timer_;
 
   // No copying allowed
   DBImpl(const DBImpl&);

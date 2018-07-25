@@ -334,6 +334,7 @@ Status Version::Get(const ReadOptions& options,
                     std::string* value,
                     GetStats* stats, 
                     const bool is_tiering) {
+  get_timer_.tic();
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();
@@ -349,6 +350,9 @@ Status Version::Get(const ReadOptions& options,
   // in an smaller level, later levels are irrelevant.
   std::vector<FileMetaData*> tmp;
   FileMetaData* tmp2;
+
+  size_t file_count = 0;
+  
   for (int level = 0; level < config::kNumLevels; level++) {
     size_t num_files = files_[level].size();
     if (num_files == 0) continue;
@@ -392,6 +396,8 @@ Status Version::Get(const ReadOptions& options,
       }
     }
 
+    file_count += num_files;
+
 
     for (uint32_t i = 0; i < num_files; ++i) {
       if (last_file_read != NULL && stats->seek_file == NULL) {
@@ -432,6 +438,8 @@ Status Version::Get(const ReadOptions& options,
         case kNotFound:
           break;      // Keep searching in other files
         case kFound:
+          get_timer_.toc();
+          std::cout << "level: " << level << ", file_count: " << file_count << ", elapsed: " << get_timer_.time_us() << "us" << std::endl;
           return s;
         case kDeleted:
           s = Status::NotFound(Slice());  // Use empty error message for speed

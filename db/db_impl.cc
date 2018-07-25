@@ -1201,14 +1201,28 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Unlock();
     // First look in the memtable, then in the immutable memtable (if any).
     LookupKey lkey(key, snapshot);
-    if (mem->Get(lkey, value, &s)) {
-      // Done
-    } else if (imm != NULL && imm->Get(lkey, value, &s)) {
-      // Done
+
+    // get from mem
+    bool mem_ret = mem->Get(lkey, value, &s);
+
+    if (mem_ret == true) {
+      // if found in mem, then done. 
+    } else if (imm != NULL) {
+
+      // get from imm
+      bool imm_ret = imm->Get(lkey, value, &s);
+      if (imm_ret == true) {
+        // if found in imm, then done.
+      } else {
+        s = current->Get(options, lkey, value, &stats, options_.is_tiering);
+        have_stat_update = true;
+      }
+
     } else {
       s = current->Get(options, lkey, value, &stats, options_.is_tiering);
       have_stat_update = true;
     }
+
     mutex_.Lock();
   }
 

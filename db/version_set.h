@@ -24,6 +24,8 @@
 #include "port/port.h"
 #include "port/thread_annotations.h"
 
+#include "db/time_measurer.h"
+
 namespace leveldb {
 
 namespace log { class Writer; }
@@ -148,6 +150,8 @@ class Version {
   // are initialized by Finalize().
   double compaction_score_;
   int compaction_level_;
+
+  TimeMeasurer get_timer_;
 
   explicit Version(VersionSet* vset)
       : vset_(vset), next_(this), prev_(this), refs_(0),
