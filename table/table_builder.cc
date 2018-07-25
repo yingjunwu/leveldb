@@ -125,7 +125,9 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   }
 
   // yingjun: insert key value pair into hash table
-  r->fast_table_cache->Add(std::string(key.data(), key.size() - 8), value);
+  if (r->fast_table_cache != nullptr) {
+    r->fast_table_cache->Add(std::string(key.data(), key.size() - 8), value);
+  }
 }
 
 void TableBuilder::Flush() {
@@ -274,9 +276,5 @@ uint64_t TableBuilder::NumEntries() const {
 uint64_t TableBuilder::FileSize() const {
   return rep_->offset;
 }
-
-// MyFastTable* TableBuilder::FastTable() const {
-//   return rep_->fast_table_;
-// }
 
 }  // namespace leveldb

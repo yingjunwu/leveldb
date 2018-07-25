@@ -23,8 +23,6 @@ struct FileMetaData {
   uint64_t file_size;         // File size in bytes
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
-  
-  // MyFastTable *fast_table_; // yingjun: hash table  
 
   FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
 };

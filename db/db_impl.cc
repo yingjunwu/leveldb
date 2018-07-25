@@ -64,7 +64,6 @@ struct DBImpl::CompactionState {
     uint64_t number;
     uint64_t file_size;
     InternalKey smallest, largest;
-    // MyFastTable *fast_table_;
   };
   std::vector<Output> outputs;
 

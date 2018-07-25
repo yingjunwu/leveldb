@@ -46,7 +46,6 @@ Status BuildTable(const std::string& dbname,
     s = builder->Finish();
     if (s.ok()) {
       meta->file_size = builder->FileSize();
-      // meta->fast_table_ = builder->FastTable();
       assert(meta->file_size > 0);
     }
     delete builder;
