@@ -35,11 +35,6 @@ void VersionEdit::Clear() {
   has_next_file_number_ = false;
   has_last_sequence_ = false;
   deleted_files_.clear();
-  for (auto fast_table : deleted_fast_tables_) {
-    delete fast_table;
-    fast_table = nullptr;
-  }
-  deleted_fast_tables_.clear();
   new_files_.clear();
 }
 

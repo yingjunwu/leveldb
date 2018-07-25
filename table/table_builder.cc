@@ -44,7 +44,7 @@ struct TableBuilder::Rep {
 
   std::string compressed_output;
 
-  MyFastTable *fast_table_;
+  FastTable* fast_table_cache;
 
   Rep(const Options& opt, WritableFile* f)
       : options(opt),
@@ -59,16 +59,15 @@ struct TableBuilder::Rep {
                      : new FilterBlockBuilder(opt.filter_policy)),
         pending_index_entry(false) {
     index_block_options.block_restart_interval = 1;
-    fast_table_ = new MyFastTable();
-    // fast_table_ = nullptr;
   }
 };
 
-TableBuilder::TableBuilder(const Options& options, WritableFile* file)
+TableBuilder::TableBuilder(const Options& options, WritableFile* file, const uint64_t file_name)
     : rep_(new Rep(options, file)) {
   if (rep_->filter_block != NULL) {
     rep_->filter_block->StartBlock(0);
   }
+  rep_->fast_table_cache = FastTableManager::GetInstance().NewFastTable(file_name);
 }
 
 TableBuilder::~TableBuilder() {
@@ -126,9 +125,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
   }
 
   // yingjun: insert key value pair into hash table
-  if (r->fast_table_ != nullptr) {
-    (*r->fast_table_)[std::string(key.data(), key.size() - 8)] = value; 
-  }
+  r->fast_table_cache->Add(std::string(key.data(), key.size() - 8), value);
 }
 
 void TableBuilder::Flush() {
@@ -278,8 +275,8 @@ uint64_t TableBuilder::FileSize() const {
   return rep_->offset;
 }
 
-MyFastTable* TableBuilder::FastTable() const {
-  return rep_->fast_table_;
-}
+// MyFastTable* TableBuilder::FastTable() const {
+//   return rep_->fast_table_;
+// }
 
 }  // namespace leveldb

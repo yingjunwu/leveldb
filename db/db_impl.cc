@@ -64,7 +64,7 @@ struct DBImpl::CompactionState {
     uint64_t number;
     uint64_t file_size;
     InternalKey smallest, largest;
-    MyFastTable *fast_table_;
+    // MyFastTable *fast_table_;
   };
   std::vector<Output> outputs;
 
@@ -294,6 +294,7 @@ void DBImpl::DeleteObsoleteFiles() {
       if (!keep) {
         if (type == kTableFile) {
           table_cache_->Evict(number);
+          FastTableManager::GetInstance().DeleteFastTable(number);
         }
         Log(options_.info_log, "Delete type=%d #%lld\n",
             int(type),
@@ -556,7 +557,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size,
-                  meta.smallest, meta.largest, meta.fast_table_);
+                  meta.smallest, meta.largest);
   }
 
   CompactionStats stats;
@@ -766,14 +767,15 @@ void DBImpl::BackgroundCompaction() {
 
   if (c == NULL) {
     // Nothing to do
-  // } else if (!is_manual && c->IsTrivialMove()) {
   } else if (!is_manual && is_trivial_move) {
     // Move file to next level
     // assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
-    c->edit()->DeleteFile(c->level(), f->number, nullptr);
+    // here we don't need to move fast_table, as fast_table is uniquely
+    // identified by file_number.
+    c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest, f->fast_table_);
+                       f->smallest, f->largest);
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -858,7 +860,7 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
   std::string fname = TableFileName(dbname_, file_number);
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
-    compact->builder = new TableBuilder(options_, compact->outfile);
+    compact->builder = new TableBuilder(options_, compact->outfile, file_number);
   }
   return s;
 }
@@ -882,9 +884,6 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
   }
   const uint64_t current_bytes = compact->builder->FileSize();
   compact->current_output()->file_size = current_bytes;
-
-  // yingjun: transfer the fast_table pointer to compact->outputs.
-  compact->current_output()->fast_table_ = compact->builder->FastTable();
 
   compact->total_bytes += current_bytes;
   delete compact->builder;
@@ -936,7 +935,7 @@ Status DBImpl::InstallCompactionResults(CompactionState* compact) {
     const CompactionState::Output& out = compact->outputs[i];
     compact->compaction->edit()->AddFile(
         level + 1,
-        out.number, out.file_size, out.smallest, out.largest, out.fast_table_);
+        out.number, out.file_size, out.smallest, out.largest);
   }
   return versions_->LogAndApply(compact->compaction->edit(), &mutex_);
 }

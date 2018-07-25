@@ -18,6 +18,8 @@
 #include "leveldb/export.h"
 #include "leveldb/options.h"
 #include "leveldb/status.h"
+#include "db/fast_table_manager.h"
+
 
 namespace leveldb {
 
@@ -25,14 +27,12 @@ class BlockBuilder;
 class BlockHandle;
 class WritableFile;
 
-typedef std::unordered_map<std::string, Slice> MyFastTable;
-
 class LEVELDB_EXPORT TableBuilder {
  public:
   // Create a builder that will store the contents of the table it is
   // building in *file.  Does not close the file.  It is up to the
   // caller to close the file after calling Finish().
-  TableBuilder(const Options& options, WritableFile* file);
+  TableBuilder(const Options& options, WritableFile* file, const uint64_t file_number);
 
   // REQUIRES: Either Finish() or Abandon() has been called.
   ~TableBuilder();
@@ -77,8 +77,6 @@ class LEVELDB_EXPORT TableBuilder {
   // Size of the file generated so far.  If invoked after a successful
   // Finish() call, returns the size of the final generated file.
   uint64_t FileSize() const;
-
-  MyFastTable* FastTable() const;
 
  private:
   bool ok() const { return status().ok(); }

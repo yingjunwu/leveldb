@@ -20,8 +20,6 @@
 
 namespace leveldb {
 
-  static size_t found_count = 0;
-
 static int TargetFileSize(const Options* options) {
   return options->max_file_size;
 }
@@ -412,18 +410,20 @@ Status Version::Get(const ReadOptions& options,
       saver.user_key = user_key;
       saver.value = value;
 
-      if (f->fast_table_ != nullptr) {
+      FastTable* fast_table = FastTableManager::GetInstance().GetFastTable(f->number);
 
-        if (f->fast_table_->find(user_key.ToString()) != f->fast_table_->end()) {
-          saver.state = kFound;
-          Slice found_value = f->fast_table_->at(user_key.ToString());
-          saver.value->assign(found_value.data(), found_value.size());
-          found_count++;
-        } 
-      } else {
-        s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                     ikey, &saver, SaveValue); 
+
+      // find value from fast table.
+      Slice found_value;
+      bool ret = fast_table->Get(user_key.ToString(), found_value);
+      if (ret == true) {
+        saver.state = kFound;
+        saver.value->assign(found_value.data(), found_value.size());
       }
+      
+      //   s = vset_->table_cache_->Get(options, f->number, f->file_size,
+      //                                ikey, &saver, SaveValue); 
+
       if (!s.ok()) {
         return s;
       }
@@ -1144,7 +1144,7 @@ Status VersionSet::WriteSnapshot(log::Writer* log) {
     const std::vector<FileMetaData*>& files = current_->files_[level];
     for (size_t i = 0; i < files.size(); i++) {
       const FileMetaData* f = files[i];
-      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest, nullptr);
+      edit.AddFile(level, f->number, f->file_size, f->smallest, f->largest);
     }
   }
 
@@ -1517,7 +1517,7 @@ bool Compaction::IsTrivialMove() const {
 void Compaction::AddInputDeletions(VersionEdit* edit) {
   for (int which = 0; which < 2; which++) {
     for (size_t i = 0; i < inputs_[which].size(); i++) {
-      edit->DeleteFile(level_ + which, inputs_[which][i]->number, inputs_[which][i]->fast_table_);
+      edit->DeleteFile(level_ + which, inputs_[which][i]->number);
     }
   }
 }

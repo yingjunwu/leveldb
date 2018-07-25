@@ -24,9 +24,9 @@ struct FileMetaData {
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
   
-  MyFastTable *fast_table_; // yingjun: hash table  
+  // MyFastTable *fast_table_; // yingjun: hash table  
 
-  FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0), fast_table_(nullptr) { }
+  FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
 };
 
 class VersionEdit {
@@ -66,23 +66,18 @@ class VersionEdit {
   void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest,
-               MyFastTable *fast_table) {
+               const InternalKey& largest) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
     f.smallest = smallest;
     f.largest = largest;
-    f.fast_table_ = fast_table;
     new_files_.push_back(std::make_pair(level, f));
   }
 
   // Delete the specified "file" from the specified "level".
-  void DeleteFile(int level, uint64_t file, MyFastTable *fast_table) {
+  void DeleteFile(int level, uint64_t file) {
     deleted_files_.insert(std::make_pair(level, file));
-    if (fast_table != nullptr) {
-      deleted_fast_tables_.push_back(fast_table);
-    }
   }
 
   void EncodeTo(std::string* dst) const;
@@ -108,7 +103,6 @@ class VersionEdit {
 
   std::vector< std::pair<int, InternalKey> > compact_pointers_;
   DeletedFileSet deleted_files_;
-  std::vector<MyFastTable*> deleted_fast_tables_;
   std::vector< std::pair<int, FileMetaData> > new_files_;
 };
 

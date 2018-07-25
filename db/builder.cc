@@ -34,7 +34,7 @@ Status BuildTable(const std::string& dbname,
       return s;
     }
 
-    TableBuilder* builder = new TableBuilder(options, file);
+    TableBuilder* builder = new TableBuilder(options, file, meta->number);
     meta->smallest.DecodeFrom(iter->key());
     for (; iter->Valid(); iter->Next()) {
       Slice key = iter->key();
@@ -46,7 +46,7 @@ Status BuildTable(const std::string& dbname,
     s = builder->Finish();
     if (s.ok()) {
       meta->file_size = builder->FileSize();
-      meta->fast_table_ = builder->FastTable();
+      // meta->fast_table_ = builder->FastTable();
       assert(meta->file_size > 0);
     }
     delete builder;

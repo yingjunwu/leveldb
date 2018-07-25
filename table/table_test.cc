@@ -230,7 +230,7 @@ class TableConstructor: public Constructor {
   virtual Status FinishImpl(const Options& options, const KVMap& data) {
     Reset();
     StringSink sink;
-    TableBuilder builder(options, &sink);
+    TableBuilder builder(options, &sink, 0);
 
     for (KVMap::const_iterator it = data.begin();
          it != data.end();

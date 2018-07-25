@@ -323,13 +323,15 @@ class Repairer {
     // new table over the source.
 
     // Create builder.
-    std::string copy = TableFileName(dbname_, next_file_number_++);
+    uint64_t table_file_number = next_file_number_;
+    next_file_number_++;
+    std::string copy = TableFileName(dbname_, table_file_number);
     WritableFile* file;
     Status s = env_->NewWritableFile(copy, &file);
     if (!s.ok()) {
       return;
     }
-    TableBuilder* builder = new TableBuilder(options_, file);
+    TableBuilder* builder = new TableBuilder(options_, file, table_file_number);
 
     // Copy data.
     Iterator* iter = NewTableIterator(t.meta);
@@ -396,7 +398,7 @@ class Repairer {
       // TODO(opt): separate out into multiple levels
       const TableInfo& t = tables_[i];
       edit_.AddFile(0, t.meta.number, t.meta.file_size,
-                    t.meta.smallest, t.meta.largest, nullptr);
+                    t.meta.smallest, t.meta.largest);
     }
 
     //fprintf(stderr, "NewDescriptor:\n%s\n", edit_.DebugString().c_str());
