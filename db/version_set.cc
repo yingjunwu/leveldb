@@ -412,21 +412,20 @@ Status Version::Get(const ReadOptions& options,
 
       FastTable* fast_table = FastTableManager::GetInstance().GetFastTable(f->number);
 
-
-      // find value from fast table.
       if (fast_table != nullptr) {
+        // find value from fast table.
         Slice found_value;
         bool ret = fast_table->Get(user_key.ToString(), found_value);
         if (ret == true) {
           saver.state = kFound;
           saver.value->assign(found_value.data(), found_value.size());
         }
-      } else {
-        
+      } else {      
         s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                     ikey, &saver, SaveValue);
+                                     ikey, &saver, SaveValue); 
+  
       }
-
+      
       if (!s.ok()) {
         return s;
       }
