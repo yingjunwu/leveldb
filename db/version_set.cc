@@ -422,8 +422,7 @@ Status Version::Get(const ReadOptions& options,
         }
       } else {      
         s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                     ikey, &saver, SaveValue); 
-  
+                                     ikey, &saver, SaveValue);
       }
       
       if (!s.ok()) {

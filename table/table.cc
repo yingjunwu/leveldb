@@ -227,6 +227,9 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
   if (iiter->Valid()) {
     Slice handle_value = iiter->value();
     FilterBlockReader* filter = rep_->filter;
+
+    filter = nullptr; // yingjun: set filter to NULL so we skip filter.
+
     BlockHandle handle;
     if (filter != NULL &&
         handle.DecodeFrom(&handle_value).ok() &&

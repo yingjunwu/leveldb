@@ -51,6 +51,7 @@ namespace leveldb {
     }
 
     FastTable* NewFastTable(const uint64_t file_number) {
+      return nullptr;
       assert(fast_tables_.find(file_number) == fast_tables_.end());
       FastTable* table = new FastTable();
       fast_tables_[file_number] = table;
@@ -58,11 +59,13 @@ namespace leveldb {
     }
 
     FastTable* GetFastTable(const uint64_t file_number) {
+      return nullptr;
       assert(fast_tables_.find(file_number) != fast_tables_.end());
       return fast_tables_[file_number];
     }
 
     void DeleteFastTable(const uint64_t file_number) {
+      return;
       assert(fast_tables_.find(file_number) != fast_tables_.end());
       FastTable* table = fast_tables_.at(file_number);
       delete table;
