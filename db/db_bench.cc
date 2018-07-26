@@ -121,6 +121,9 @@ static bool FLAGS_is_tiering = false;
 // If true, then use fast table
 static bool FLAGS_allow_fast_table = false;
 
+// Periodically print out stats
+static int FLAGS_stats_frequency = -1;
+
 namespace leveldb {
 
 namespace {
@@ -332,6 +335,7 @@ class Benchmark {
   WriteOptions write_options_;
   int reads_;
   int heap_counter_;
+  bool is_reporting_stats_;
 
   void PrintHeader() {
     const int kKeySize = 16;
@@ -549,7 +553,15 @@ class Benchmark {
       }
 
       if (method != NULL) {
-        RunBenchmark(num_threads, name, method);
+        if (FLAGS_stats_frequency > 0) {
+          is_reporting_stats_ = true;
+          std::thread stats_thread(&Benchmark::PrintStatsThread, this, FLAGS_stats_frequency);
+          RunBenchmark(num_threads, name, method); 
+          is_reporting_stats_ = false;
+          stats_thread.join();
+        } else {
+          RunBenchmark(num_threads, name, method); 
+        }
       }
     }
   }
@@ -939,6 +951,14 @@ class Benchmark {
     fprintf(stdout, "\n%s\n", stats.c_str());
   }
 
+  void PrintStatsThread(const int stats_frequency) {
+    while (is_reporting_stats_ == true) {
+      std::this_thread::sleep_for(std::chrono::seconds(stats_frequency));
+      PrintStats("leveldb.stats");
+      PrintStats("leveldb.sstables");
+    }
+  }
+
   static void WriteToFile(void* arg, const char* buf, int n) {
     reinterpret_cast<WritableFile*>(arg)->Append(Slice(buf, n));
   }
@@ -1018,6 +1038,8 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--allow_fast_table=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_allow_fast_table = n;
+    } else if (sscanf(argv[i], "--stats_frequency=%d%c", &n, &junk) == 1) {
+      FLAGS_stats_frequency = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
