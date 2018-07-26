@@ -51,6 +51,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   Slice key(buf, sizeof(buf));
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
+    // if found nothing in cache...
     std::string fname = TableFileName(dbname_, file_number);
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -74,6 +75,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
       TableAndFile* tf = new TableAndFile;
       tf->file = file;
       tf->table = table;
+      // key is file_number
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
   }
@@ -117,25 +119,19 @@ Status TableCache::Get(const ReadOptions& options,
 
   if (fast_table != nullptr) {
 
-    Status s;
-    // ParsedInternalKey parsed_key;
-    // if (!ParseInternalKey(k, &parsed_key)) {
-    //   assert(false);
-    // }
     // find value from fast table.
     Slice found_value;
-    bool ret = fast_table->Get(std::string(k.data(), k.size() - 8), found_value);
+    bool ret = fast_table->Get(k.data(), k.size() - 8, found_value);
     if (ret == true) {
       Saver* saver = reinterpret_cast<Saver*>(arg);
       saver->state = kFound;
-      // assert(saver->value != nullptr);
-      // saver->value->assign(found_value.data(), found_value.size());
-    //   // std::cout << "found here!" << std::endl;
+      saver->value->assign(found_value.data(), found_value.size());
     }
+
+    Status s;
     return s;
 
   } else {
-
     Cache::Handle* handle = NULL;
     Status s = FindTable(file_number, file_size, &handle);
     if (s.ok()) {

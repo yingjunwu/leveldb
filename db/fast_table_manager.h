@@ -12,31 +12,29 @@ namespace leveldb {
 
   class FastTable {
 
-  public:
-    FastTable() {}
+    public:
+      FastTable() {}
 
-    ~FastTable() {}
+      ~FastTable() {}
 
-    void Add(const std::string &key, const Slice &value) {
-      table_.insert({key, value});
-    }
-
-    bool Get(const std::string &key, Slice &value) {
-      auto entry = table_.find(key);
-      if (entry == table_.end()) {
-        return false;
-      } else {
-        value = entry->second;
-        return true;
+      void Add(const char* data, const size_t size, const Slice &value) {
+        table_.insert( { std::string(data, size), value } );
       }
-    }
 
-  private:
-    std::unordered_map<std::string, Slice> table_;
+      bool Get(const char *data, const size_t size, Slice &value) {
+        auto entry = table_.find(std::string(data, size));
+        if (entry == table_.end()) {
+          return false;
+        } else {
+          value = entry->second;
+          return true;
+        }
+      }
+
+    private:
+      std::unordered_map<std::string, Slice> table_;
 
   };
-
-
 
   class FastTableManager {
 

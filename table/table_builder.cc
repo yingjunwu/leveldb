@@ -130,7 +130,7 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   // yingjun: insert key value pair into hash table
   if (r->fast_table_cache != nullptr) {
-    r->fast_table_cache->Add(std::string(key.data(), key.size() - 8), value);
+    r->fast_table_cache->Add(key.data(), key.size() - 8, value);
   }
 }
 
