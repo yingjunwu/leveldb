@@ -115,8 +115,11 @@ static bool FLAGS_reuse_logs = false;
 // Use the db with the following name.
 static const char* FLAGS_db = NULL;
 
-// If true, the database uses tiering compaction strategy
+// If true, then use tiering compaction strategy
 static bool FLAGS_is_tiering = false;
+
+// If true, then use fast table
+static bool FLAGS_allow_fast_table = false;
 
 namespace leveldb {
 
@@ -723,6 +726,7 @@ class Benchmark {
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
     options.is_tiering = FLAGS_is_tiering;
+    options.allow_fast_table = FLAGS_allow_fast_table;
 
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
@@ -965,6 +969,7 @@ int main(int argc, char** argv) {
   FLAGS_block_size = leveldb::Options().block_size;
   FLAGS_open_files = leveldb::Options().max_open_files;
   FLAGS_is_tiering = leveldb::Options().is_tiering;
+  FLAGS_allow_fast_table = leveldb::Options().allow_fast_table;
 
   std::string default_db_path;
 
@@ -1010,6 +1015,9 @@ int main(int argc, char** argv) {
     } else if (sscanf(argv[i], "--is_tiering=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_is_tiering = n;
+    } else if (sscanf(argv[i], "--allow_fast_table=%d%c", &n, &junk) == 1 &&
+               (n == 0 || n == 1)) {
+      FLAGS_allow_fast_table = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);

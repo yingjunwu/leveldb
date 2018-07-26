@@ -3,6 +3,7 @@
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
 #include "db/table_cache.h"
+#include "db/version_set.h"
 
 #include "db/filename.h"
 #include "leveldb/env.h"
@@ -108,14 +109,43 @@ Status TableCache::Get(const ReadOptions& options,
                        const Slice& k,
                        void* arg,
                        void (*saver)(void*, const Slice&, const Slice&)) {
-  Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
-  if (s.ok()) {
-    Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
-    s = t->InternalGet(options, k, arg, saver);
-    cache_->Release(handle);
+
+  FastTable* fast_table = nullptr;
+  if (options_->allow_fast_table == true) {
+    fast_table = FastTableManager::GetInstance().GetFastTable(file_number);
   }
-  return s;
+
+  if (fast_table != nullptr) {
+
+    Status s;
+    // ParsedInternalKey parsed_key;
+    // if (!ParseInternalKey(k, &parsed_key)) {
+    //   assert(false);
+    // }
+    // find value from fast table.
+    Slice found_value;
+    bool ret = fast_table->Get(std::string(k.data(), k.size() - 8), found_value);
+    if (ret == true) {
+      Saver* saver = reinterpret_cast<Saver*>(arg);
+      saver->state = kFound;
+      // assert(saver->value != nullptr);
+      // saver->value->assign(found_value.data(), found_value.size());
+    //   // std::cout << "found here!" << std::endl;
+    }
+    return s;
+
+  } else {
+
+    Cache::Handle* handle = NULL;
+    Status s = FindTable(file_number, file_size, &handle);
+    if (s.ok()) {
+      Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+      s = t->InternalGet(options, k, arg, saver);
+      cache_->Release(handle);
+    }
+    return s;
+
+  }
 }
 
 void TableCache::Evict(uint64_t file_number) {

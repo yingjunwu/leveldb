@@ -25,7 +25,8 @@ Options::Options()
       compression(kSnappyCompression),
       reuse_logs(false),
       filter_policy(NULL),
-      is_tiering(false) {
+      is_tiering(false),
+      allow_fast_table(false) {
 }
 
 }  // namespace leveldb

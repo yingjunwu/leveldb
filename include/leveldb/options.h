@@ -157,6 +157,9 @@ struct LEVELDB_EXPORT Options {
   // By default we do leveling. if is_tiering is set to true, then we do tiering.
   bool is_tiering;
 
+  // By default we do not allow fast table.
+  bool allow_fast_table;
+
   // Create an Options object with default values for all fields.
   Options();
 };

@@ -250,21 +250,21 @@ void Version::AddIterators(const ReadOptions& options,
   }
 }
 
-// Callback from TableCache::Get()
-namespace {
-enum SaverState {
-  kNotFound,
-  kFound,
-  kDeleted,
-  kCorrupt,
-};
-struct Saver {
-  SaverState state;
-  const Comparator* ucmp;
-  Slice user_key;
-  std::string* value;
-};
-}
+// // Callback from TableCache::Get()
+// namespace {
+// enum SaverState {
+//   kNotFound,
+//   kFound,
+//   kDeleted,
+//   kCorrupt,
+// };
+// struct Saver {
+//   SaverState state;
+//   const Comparator* ucmp;
+//   Slice user_key;
+//   std::string* value;
+// };
+// }
 static void SaveValue(void* arg, const Slice& ikey, const Slice& v) {
   Saver* s = reinterpret_cast<Saver*>(arg);
   ParsedInternalKey parsed_key;
@@ -334,7 +334,7 @@ Status Version::Get(const ReadOptions& options,
                     std::string* value,
                     GetStats* stats, 
                     const bool is_tiering) {
-  get_timer_.tic();
+  // get_timer_.tic();
   Slice ikey = k.internal_key();
   Slice user_key = k.user_key();
   const Comparator* ucmp = vset_->icmp_.user_comparator();
@@ -415,21 +415,9 @@ Status Version::Get(const ReadOptions& options,
       saver.ucmp = ucmp;
       saver.user_key = user_key;
       saver.value = value;
-
-      FastTable* fast_table = FastTableManager::GetInstance().GetFastTable(f->number);
-
-      if (fast_table != nullptr) {
-        // find value from fast table.
-        Slice found_value;
-        bool ret = fast_table->Get(user_key.ToString(), found_value);
-        if (ret == true) {
-          saver.state = kFound;
-          saver.value->assign(found_value.data(), found_value.size());
-        }
-      } else {      
-        s = vset_->table_cache_->Get(options, f->number, f->file_size,
-                                     ikey, &saver, SaveValue);
-      }
+ 
+      s = vset_->table_cache_->Get(options, f->number, f->file_size,
+                                   ikey, &saver, SaveValue);
       
       if (!s.ok()) {
         return s;
@@ -438,8 +426,8 @@ Status Version::Get(const ReadOptions& options,
         case kNotFound:
           break;      // Keep searching in other files
         case kFound:
-          get_timer_.toc();
-          std::cout << "level: " << level << ", file_count: " << file_count << ", elapsed: " << get_timer_.time_us() << "us" << std::endl;
+          // get_timer_.toc();
+          // std::cout << "level: " << level << ", file_count: " << file_count << ", elapsed: " << get_timer_.time_us() << "us" << std::endl;
           return s;
         case kDeleted:
           s = Status::NotFound(Slice());  // Use empty error message for speed

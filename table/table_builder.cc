@@ -67,7 +67,11 @@ TableBuilder::TableBuilder(const Options& options, WritableFile* file, const uin
   if (rep_->filter_block != NULL) {
     rep_->filter_block->StartBlock(0);
   }
-  rep_->fast_table_cache = FastTableManager::GetInstance().NewFastTable(file_name);
+  if (options.allow_fast_table == true) {
+    rep_->fast_table_cache = FastTableManager::GetInstance().NewFastTable(file_name);
+  } else {
+    rep_->fast_table_cache = nullptr;
+  }
 }
 
 TableBuilder::~TableBuilder() {

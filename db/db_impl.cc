@@ -293,7 +293,9 @@ void DBImpl::DeleteObsoleteFiles() {
       if (!keep) {
         if (type == kTableFile) {
           table_cache_->Evict(number);
-          FastTableManager::GetInstance().DeleteFastTable(number);
+          if (options_.allow_fast_table == true) {
+            FastTableManager::GetInstance().DeleteFastTable(number);
+          }
         }
         Log(options_.info_log, "Delete type=%d #%lld\n",
             int(type),

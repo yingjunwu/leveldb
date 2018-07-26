@@ -228,8 +228,6 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
     Slice handle_value = iiter->value();
     FilterBlockReader* filter = rep_->filter;
 
-    filter = nullptr; // yingjun: set filter to NULL so we skip filter.
-
     BlockHandle handle;
     if (filter != NULL &&
         handle.DecodeFrom(&handle_value).ok() &&
@@ -251,7 +249,6 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
   delete iiter;
   return s;
 }
-
 
 uint64_t Table::ApproximateOffsetOf(const Slice& key) const {
   Iterator* index_iter =
