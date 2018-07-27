@@ -70,7 +70,7 @@ Slice BlockBuilder::Finish() {
   return Slice(buffer_);
 }
 
-void BlockBuilder::Add(const Slice& key, const Slice& value) {
+size_t BlockBuilder::Add(const Slice& key, const Slice& value) {
   Slice last_key_piece(last_key_);
   assert(!finished_);
   assert(counter_ <= options_->block_restart_interval);
@@ -79,7 +79,10 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   size_t shared = 0;
   if (counter_ < options_->block_restart_interval) {
     // See how much sharing to do with previous string
+    // if it is the first key, then min_length == 0
     const size_t min_length = std::min(last_key_piece.size(), key.size());
+    // if it is the first key, then shared will be set to 0
+    // otherwise, it will be set to number of bytes equal to the previous key
     while ((shared < min_length) && (last_key_piece[shared] == key[shared])) {
       shared++;
     }
@@ -104,6 +107,9 @@ void BlockBuilder::Add(const Slice& key, const Slice& value) {
   last_key_.append(key.data() + shared, non_shared);
   assert(Slice(last_key_) == key);
   counter_++;
+
+  assert(restarts_.size() != 0);
+  return restarts_.at(restarts_.size() - 1);
 }
 
 }  // namespace leveldb

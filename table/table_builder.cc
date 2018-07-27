@@ -121,16 +121,23 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   r->last_key.assign(key.data(), key.size());
   r->num_entries++;
-  r->data_block.Add(key, value);
+  
+  // return the position of the kv-pair in the data block.
+  size_t position = r->data_block.Add(key, value);
+
+  // yingjun: insert key value pair into hash table
+  if (r->fast_table_cache != nullptr) {
+    r->fast_table_cache->Add(key.data(), key.size() - 8, 
+                             KVBlockHandle(r->pending_handle.offset(), 
+                                           r->pending_handle.size(), 
+                                           position));
+  }
+
+
 
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
   if (estimated_block_size >= r->options.block_size) {
     Flush();
-  }
-
-  // yingjun: insert key value pair into hash table
-  if (r->fast_table_cache != nullptr) {
-    r->fast_table_cache->Add(key.data(), key.size() - 8, value);
   }
 }
 

@@ -9,6 +9,7 @@
 #include "leveldb/env.h"
 #include "leveldb/table.h"
 #include "util/coding.h"
+#include "table/format.h"
 
 namespace leveldb {
 
@@ -120,18 +121,20 @@ Status TableCache::Get(const ReadOptions& options,
   if (fast_table != nullptr) {
 
     // find value from fast table.
-    Slice found_value;
-    bool ret = fast_table->Get(k.data(), k.size() - 8, found_value);
+    KVBlockHandle kv_block_handle;
+    bool ret = fast_table->Get(k.data(), k.size() - 8, kv_block_handle);
     if (ret == true) {
-      Saver* saver = reinterpret_cast<Saver*>(arg);
-      saver->state = kFound;
-      saver->value->assign(found_value.data(), found_value.size());
+      std::cout << kv_block_handle.offset() << " " << kv_block_handle.size() << std::endl;
+  //     Saver* saver = reinterpret_cast<Saver*>(arg);
+  //     saver->state = kFound;
+  //     saver->value->assign(found_value.data(), found_value.size());
     }
+  }
 
-    Status s;
-    return s;
+  //   Status s;
+  //   return s;
 
-  } else {
+  // } else {
     Cache::Handle* handle = NULL;
     Status s = FindTable(file_number, file_size, &handle);
     if (s.ok()) {
@@ -141,7 +144,7 @@ Status TableCache::Get(const ReadOptions& options,
     }
     return s;
 
-  }
+  // }
 }
 
 void TableCache::Evict(uint64_t file_number) {

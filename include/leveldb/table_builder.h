@@ -18,7 +18,6 @@
 #include "leveldb/export.h"
 #include "leveldb/options.h"
 #include "leveldb/status.h"
-#include "db/fast_table_manager.h"
 
 
 namespace leveldb {

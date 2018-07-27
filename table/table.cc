@@ -14,6 +14,9 @@
 #include "table/format.h"
 #include "table/two_level_iterator.h"
 #include "util/coding.h"
+#include "db/version_set.h"
+
+#include <iostream>
 
 namespace leveldb {
 
@@ -221,6 +224,7 @@ Iterator* Table::NewIterator(const ReadOptions& options) const {
 Status Table::InternalGet(const ReadOptions& options, const Slice& k,
                           void* arg,
                           void (*saver)(void*, const Slice&, const Slice&)) {
+
   Status s;
   Iterator* iiter = rep_->index_block->NewIterator(rep_->options.comparator);
   iiter->Seek(k);
@@ -229,8 +233,11 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
     FilterBlockReader* filter = rep_->filter;
 
     BlockHandle handle;
+    Status handle_s = handle.DecodeFrom(&handle_value);
+    assert(handle_s.ok());
+    
     if (filter != NULL &&
-        handle.DecodeFrom(&handle_value).ok() &&
+        // handle.DecodeFrom(&handle_value).ok() &&
         !filter->KeyMayMatch(handle.offset(), k)) {
       // Not found
     } else {
@@ -238,6 +245,10 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
       block_iter->Seek(k);
       if (block_iter->Valid()) {
         (*saver)(arg, block_iter->key(), block_iter->value());
+      }  
+      Saver* my_saver = reinterpret_cast<Saver*>(arg);
+      if (my_saver->state == kFound) {
+        std::cout << "handle: " << handle.offset() << " " << handle.size() << std::endl;
       }
       s = block_iter->status();
       delete block_iter;

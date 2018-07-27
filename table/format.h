@@ -42,6 +42,33 @@ class BlockHandle {
   uint64_t size_;
 };
 
+// KVBlockHandle is a pointer to the extent of a file that stores a kv pair
+// in a data block.
+class KVBlockHandle {
+ public:
+  KVBlockHandle();
+
+  KVBlockHandle(const uint64_t offset, const uint64_t size, const uint64_t position);
+
+  // The offset of the data block in the file.
+  uint64_t offset() const { return offset_; }
+  void set_offset(uint64_t offset) { offset_ = offset; }
+
+  // The size of the stored block
+  uint64_t size() const { return size_; }
+  void set_size(uint64_t size) { size_ = size; }
+
+  // The position of the targeted value in the block.
+  uint64_t position() const { return position_; }
+  void set_position(uint64_t position) { position_ = position; }
+
+ private:
+  uint64_t offset_;
+  uint64_t size_;
+  uint64_t position_;
+
+};
+
 // Footer encapsulates the fixed information stored at the tail
 // end of every table file.
 class Footer {
@@ -102,6 +129,90 @@ inline BlockHandle::BlockHandle()
     : offset_(~static_cast<uint64_t>(0)),
       size_(~static_cast<uint64_t>(0)) {
 }
+
+inline KVBlockHandle::KVBlockHandle()
+    : offset_(~static_cast<uint64_t>(0)), 
+      size_(~static_cast<uint64_t>(0)), 
+      position_(~static_cast<uint64_t>(0)) {
+}
+
+inline KVBlockHandle::KVBlockHandle(const uint64_t offset, 
+                                    const uint64_t size, 
+                                    const uint64_t position)
+    : offset_(offset), 
+      size_(size),
+      position_(position) {
+}
+
+
+
+  class FastTable {
+
+    public:
+      FastTable() {}
+
+      ~FastTable() {}
+
+      void Add(const char* data, const size_t size, const KVBlockHandle &handle) {
+        table_.insert( { std::string(data, size), handle } );
+      }
+
+      bool Get(const char *data, const size_t size, KVBlockHandle &handle) {
+        auto entry = table_.find(std::string(data, size));
+        if (entry == table_.end()) {
+          return false;
+        } else {
+          handle = entry->second;
+          return true;
+        }
+      }
+
+    private:
+      std::unordered_map<std::string, KVBlockHandle> table_;
+
+  };
+
+  class FastTableManager {
+
+  public:
+    FastTableManager() {}
+
+    ~FastTableManager() {}
+
+    static FastTableManager& GetInstance() {
+      static FastTableManager fast_table_manager;
+      return fast_table_manager;
+    }
+
+    FastTable* NewFastTable(const uint64_t file_number) {
+      assert(fast_tables_.find(file_number) == fast_tables_.end());
+      FastTable* table = new FastTable();
+      fast_tables_[file_number] = table;
+      return table;
+    }
+
+    FastTable* GetFastTable(const uint64_t file_number) {
+      assert(fast_tables_.find(file_number) != fast_tables_.end());
+      return fast_tables_[file_number];
+    }
+
+    void DeleteFastTable(const uint64_t file_number) {
+      assert(fast_tables_.find(file_number) != fast_tables_.end());
+      FastTable* table = fast_tables_.at(file_number);
+      delete table;
+      table = nullptr;
+      fast_tables_.erase(file_number); 
+    }
+
+
+  private:
+     std::unordered_map<uint64_t, FastTable*> fast_tables_;
+
+  };
+
+
+
+
 
 }  // namespace leveldb
 

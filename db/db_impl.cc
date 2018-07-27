@@ -31,6 +31,7 @@
 #include "table/block.h"
 #include "table/merger.h"
 #include "table/two_level_iterator.h"
+#include "table/format.h"
 #include "util/coding.h"
 #include "util/logging.h"
 #include "util/mutexlock.h"
