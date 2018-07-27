@@ -166,7 +166,7 @@ class Version {
   double compaction_score_;
   int compaction_level_;
 
-  TimeMeasurer get_timer_;
+  // TimeMeasurer get_timer_;
 
   explicit Version(VersionSet* vset)
       : vset_(vset), next_(this), prev_(this), refs_(0),

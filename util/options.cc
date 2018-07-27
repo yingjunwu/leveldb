@@ -26,7 +26,9 @@ Options::Options()
       reuse_logs(false),
       filter_policy(NULL),
       is_tiering(false),
-      allow_fast_table(false) {
+      allow_fast_table(false),
+      base_level_size(1<<20), 
+      level_size_ratio(10) {
 }
 
 }  // namespace leveldb

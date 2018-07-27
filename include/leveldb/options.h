@@ -160,6 +160,10 @@ struct LEVELDB_EXPORT Options {
   // By default we do not allow fast table.
   bool allow_fast_table;
 
+  // the max size for level 1 is base_level_size * level_size_ratio
+  size_t base_level_size;
+  size_t level_size_ratio;
+
   // Create an Options object with default values for all fields.
   Options();
 };

@@ -124,6 +124,10 @@ static bool FLAGS_allow_fast_table = false;
 // Periodically print out stats
 static int FLAGS_stats_frequency = -1;
 
+static int FLAGS_base_level_size = 0;
+
+static int FLAGS_level_size_ratio = 0;
+
 namespace leveldb {
 
 namespace {
@@ -739,6 +743,8 @@ class Benchmark {
     options.reuse_logs = FLAGS_reuse_logs;
     options.is_tiering = FLAGS_is_tiering;
     options.allow_fast_table = FLAGS_allow_fast_table;
+    options.base_level_size = FLAGS_base_level_size;
+    options.level_size_ratio = FLAGS_level_size_ratio;
 
     Status s = DB::Open(options, FLAGS_db, &db_);
     if (!s.ok()) {
@@ -990,6 +996,8 @@ int main(int argc, char** argv) {
   FLAGS_open_files = leveldb::Options().max_open_files;
   FLAGS_is_tiering = leveldb::Options().is_tiering;
   FLAGS_allow_fast_table = leveldb::Options().allow_fast_table;
+  FLAGS_base_level_size = leveldb::Options().base_level_size;
+  FLAGS_level_size_ratio = leveldb::Options().level_size_ratio;
 
   std::string default_db_path;
 
@@ -1040,6 +1048,10 @@ int main(int argc, char** argv) {
       FLAGS_allow_fast_table = n;
     } else if (sscanf(argv[i], "--stats_frequency=%d%c", &n, &junk) == 1) {
       FLAGS_stats_frequency = n;
+    } else if (sscanf(argv[i], "--base_level_size=%d%c", &n, &junk) == 1) {
+      FLAGS_base_level_size = n;
+    } else if (sscanf(argv[i], "--level_size_ratio=%d%c", &n, &junk) == 1) {
+      FLAGS_level_size_ratio = n;
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);
