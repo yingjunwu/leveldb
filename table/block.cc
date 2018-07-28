@@ -6,6 +6,7 @@
 
 #include "table/block.h"
 
+#include <iostream>
 #include <vector>
 #include <algorithm>
 #include "leveldb/comparator.h"
@@ -162,6 +163,7 @@ class Block::Iter : public Iterator {
     } while (ParseNextKey() && NextEntryOffset() < original);
   }
 
+  // this function search target within a block
   virtual void Seek(const Slice& target) {
     // Binary search in restart array to find the last restart point
     // with a key < target
@@ -213,6 +215,8 @@ class Block::Iter : public Iterator {
       // Keep skipping
     }
   }
+
+
 
  private:
   void CorruptionError() {

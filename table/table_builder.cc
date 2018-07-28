@@ -4,6 +4,7 @@
 
 #include "leveldb/table_builder.h"
 
+#include <vector>
 #include <assert.h>
 #include "leveldb/comparator.h"
 #include "leveldb/env.h"
@@ -25,6 +26,7 @@ struct TableBuilder::Rep {
   Status status;
   BlockBuilder data_block;
   BlockBuilder index_block;
+  std::vector<std::pair<std::string, size_t>> key_batch;
   std::string last_key;
   int64_t num_entries;
   bool closed;          // Either Finish() or Abandon() has been called.
@@ -111,6 +113,8 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
     r->options.comparator->FindShortestSeparator(&r->last_key, key);
     std::string handle_encoding;
     r->pending_handle.EncodeTo(&handle_encoding);
+    // the index_block contains entries mapping from last_key to 
+    // the block id containing keys smaller than last_key.
     r->index_block.Add(r->last_key, Slice(handle_encoding));
     r->pending_index_entry = false;
   }
@@ -127,17 +131,23 @@ void TableBuilder::Add(const Slice& key, const Slice& value) {
 
   // yingjun: insert key value pair into hash table
   if (r->fast_table_cache != nullptr) {
-    r->fast_table_cache->Add(key.data(), key.size() - 8, 
-                             KVBlockHandle(r->pending_handle.offset(), 
-                                           r->pending_handle.size(), 
-                                           position));
+    r->key_batch.push_back({std::string(key.data(), key.size() - 8), position});
   }
-
-
 
   const size_t estimated_block_size = r->data_block.CurrentSizeEstimate();
   if (estimated_block_size >= r->options.block_size) {
     Flush();
+
+    // yingjun: once flush() is called, we record the data and the address to fast table.
+    if (r->fast_table_cache != nullptr) {
+      for (auto entry : r->key_batch) {
+        r->fast_table_cache->Add(entry.first.data(), entry.first.size(), 
+                                 KVBlockHandle(r->pending_handle.offset(), 
+                                               r->pending_handle.size(), 
+                                               entry.second));
+      }
+      r->key_batch.clear();
+    }
   }
 }
 

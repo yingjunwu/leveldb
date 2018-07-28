@@ -124,7 +124,7 @@ Status TableCache::Get(const ReadOptions& options,
     KVBlockHandle kv_block_handle;
     bool ret = fast_table->Get(k.data(), k.size() - 8, kv_block_handle);
     if (ret == true) {
-      std::cout << kv_block_handle.offset() << " " << kv_block_handle.size() << std::endl;
+      std::cout << kv_block_handle.offset() << " " << kv_block_handle.size() << " " << kv_block_handle.position() << std::endl;
   //     Saver* saver = reinterpret_cast<Saver*>(arg);
   //     saver->state = kFound;
   //     saver->value->assign(found_value.data(), found_value.size());

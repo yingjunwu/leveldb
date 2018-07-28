@@ -109,7 +109,8 @@ size_t BlockBuilder::Add(const Slice& key, const Slice& value) {
   counter_++;
 
   assert(restarts_.size() != 0);
-  return restarts_.at(restarts_.size() - 1);
+  // return restarts_.at(restarts_.size() - 1);
+  return restarts_.size() - 1;
 }
 
 }  // namespace leveldb
