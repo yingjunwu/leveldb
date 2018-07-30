@@ -117,34 +117,37 @@ Status TableCache::Get(const ReadOptions& options,
   if (options_->allow_fast_table == true) {
     fast_table = FastTableManager::GetInstance().GetFastTable(file_number);
   }
-
+  
+  Status s;
   if (fast_table != nullptr) {
-
-    // find value from fast table.
+    // if have fast table, than find kv_block_handle from fast table.
     KVBlockHandle kv_block_handle;
     bool ret = fast_table->Get(k.data(), k.size() - 8, kv_block_handle);
+
     if (ret == true) {
       std::cout << kv_block_handle.offset() << " " << kv_block_handle.size() << " " << kv_block_handle.position() << std::endl;
-  //     Saver* saver = reinterpret_cast<Saver*>(arg);
-  //     saver->state = kFound;
-  //     saver->value->assign(found_value.data(), found_value.size());
-    }
-  }
 
-  //   Status s;
-  //   return s;
-
-  // } else {
+      Cache::Handle* handle = NULL;
+      s = FindTable(file_number, file_size, &handle);
+      if (s.ok()) {
+        Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
+        s = t->InternalGet(options, k, arg, saver);
+        cache_->Release(handle);
+      }
+    } 
+  
+  } else {
+    // if don't have fast table, then find it in files.
     Cache::Handle* handle = NULL;
-    Status s = FindTable(file_number, file_size, &handle);
+    s = FindTable(file_number, file_size, &handle);
     if (s.ok()) {
       Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
       s = t->InternalGet(options, k, arg, saver);
       cache_->Release(handle);
     }
-    return s;
 
-  // }
+  }
+  return s;
 }
 
 void TableCache::Evict(uint64_t file_number) {
