@@ -215,6 +215,60 @@ Iterator* Table::BlockReader(void* arg,
   return iter;
 }
 
+Iterator* Table::BlockReader(void* arg,
+                             const ReadOptions& options,
+                             const KVBlockHandle& kv_block_handle) {
+  Table* table = reinterpret_cast<Table*>(arg);
+  Cache* block_cache = table->rep_->options.block_cache;
+  Block* block = NULL;
+  Cache::Handle* cache_handle = NULL;
+
+  BlockHandle handle;
+  handle.set_offset(kv_block_handle.offset());
+  handle.set_size(kv_block_handle.size());
+
+  Status s;
+  BlockContents contents;
+  if (block_cache != NULL) {
+    char cache_key_buffer[16];
+    EncodeFixed64(cache_key_buffer, table->rep_->cache_id);
+    EncodeFixed64(cache_key_buffer+8, handle.offset());
+    Slice key(cache_key_buffer, sizeof(cache_key_buffer));
+    cache_handle = block_cache->Lookup(key);
+    if (cache_handle != NULL) {
+      block = reinterpret_cast<Block*>(block_cache->Value(cache_handle));
+    } else {
+      s = ReadBlock(table->rep_->file, options, handle, &contents);
+      if (s.ok()) {
+        block = new Block(contents);
+        if (contents.cachable && options.fill_cache) {
+          cache_handle = block_cache->Insert(
+              key, block, block->size(), &DeleteCachedBlock);
+        }
+      }
+    }
+  } else {
+    s = ReadBlock(table->rep_->file, options, handle, &contents);
+    if (s.ok()) {
+      block = new Block(contents);
+    }
+  }
+
+  Iterator* iter;
+  if (block != NULL) {
+    iter = block->NewIterator(table->rep_->options.comparator);
+    if (cache_handle == NULL) {
+      iter->RegisterCleanup(&DeleteBlock, block, NULL);
+    } else {
+      iter->RegisterCleanup(&ReleaseBlock, block_cache, cache_handle);
+    }
+  } else {
+    iter = NewErrorIterator(s);
+  }
+  return iter;
+}
+
+
 Iterator* Table::NewIterator(const ReadOptions& options) const {
   return NewTwoLevelIterator(
       rep_->index_block->NewIterator(rep_->options.comparator),
@@ -246,10 +300,10 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
       if (block_iter->Valid()) {
         (*saver)(arg, block_iter->key(), block_iter->value());
       }  
-      Saver* my_saver = reinterpret_cast<Saver*>(arg);
-      if (my_saver->state == kFound) {
-        std::cout << "handle: " << handle.offset() << " " << handle.size() << std::endl;
-      }
+      // Saver* my_saver = reinterpret_cast<Saver*>(arg);
+      // if (my_saver->state == kFound) {
+      //   std::cout << "handle: " << handle.offset() << " " << handle.size() << std::endl;
+      // }
       s = block_iter->status();
       delete block_iter;
     }
@@ -258,6 +312,21 @@ Status Table::InternalGet(const ReadOptions& options, const Slice& k,
     s = iiter->status();
   }
   delete iiter;
+  return s;
+}
+
+Status Table::InternalGet(const ReadOptions& options, const Slice&k, const KVBlockHandle& kv_block_handle,
+                          void* arg, 
+                          void* (*saver)(void*, const Slice&, const Slice&)) {
+  Status s;
+  Iterator* block_iter = BlockReader(this, options, kv_block_handle);
+  block_iter->Seek(k);
+  if (block_iter->Valid()) {
+    (*saver)(arg, block_iter->key(), block_iter->value());
+  }
+  s = block_iter->status();
+  delete block_iter;
+
   return s;
 }
 

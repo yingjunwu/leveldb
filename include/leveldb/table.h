@@ -13,6 +13,7 @@ namespace leveldb {
 
 class Block;
 class BlockHandle;
+class KVBlockHandle;
 class Footer;
 struct Options;
 class RandomAccessFile;
@@ -62,6 +63,7 @@ class LEVELDB_EXPORT Table {
 
   explicit Table(Rep* rep) { rep_ = rep; }
   static Iterator* BlockReader(void*, const ReadOptions&, const Slice&);
+  static Iterator* BlockReader(void*, const ReadOptions&, const KVBlockHandle&);
 
   // Calls (*handle_result)(arg, ...) with the entry found after a call
   // to Seek(key).  May not make such a call if filter policy says
@@ -72,6 +74,15 @@ class LEVELDB_EXPORT Table {
       void* arg,
       void (*handle_result)(void* arg, const Slice& k, const Slice& v));
 
+  // Status InternalGet1(
+  //     const ReadOptions&, const Slice& key,
+  //     const KVBlockHandle& kv_block_handle, 
+  //     void* arg,
+  //     void (*handle_result)(void* arg, const Slice& k, const Slice& v));
+
+  Status InternalGet(const ReadOptions& options, const Slice&k, const KVBlockHandle& kv_block_handle,
+                          void* arg, 
+                          void* (*saver)(void*, const Slice&, const Slice&));
 
   void ReadMeta(const Footer& footer);
   void ReadFilter(const Slice& filter_handle_value);
