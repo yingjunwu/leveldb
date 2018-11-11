@@ -53,6 +53,19 @@ class LEVELDB_EXPORT DB {
                      const std::string& name,
                      DB** dbptr);
 
+  // static Status Open(const Options& options,
+  //                    const std::string& name,
+  //                    const std::string& cache_dir, 
+  //                    const std::string& storage_dir, 
+  //                    const int cache_level_count, 
+  //                    DB** dbptr);
+
+  // static Status Open(const Options& options, 
+  //                    const std::string& cache_dbname, 
+  //                    const std::string& storage_dbname, 
+  //                    const int cache_level_count, 
+  //                    DB** dbptr);
+
   DB() { }
   virtual ~DB();
 

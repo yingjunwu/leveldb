@@ -114,15 +114,17 @@ Options SanitizeOptions(const std::string& dbname,
   return result;
 }
 
-DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
+DBImpl::DBImpl(const Options& raw_options, const std::string& cache_dbname, const std::string& storage_dbname, const int cache_level_count)
     : env_(raw_options.env),
       internal_comparator_(raw_options.comparator),
       internal_filter_policy_(raw_options.filter_policy),
-      options_(SanitizeOptions(dbname, &internal_comparator_,
+      options_(SanitizeOptions(storage_dbname, &internal_comparator_,
                                &internal_filter_policy_, raw_options)),
       owns_info_log_(options_.info_log != raw_options.info_log),
       owns_cache_(options_.block_cache != raw_options.block_cache),
-      dbname_(dbname),
+      cache_dbname_(cache_dbname),
+      storage_dbname_(storage_dbname),
+      cache_level_count_(cache_level_count),
       db_lock_(NULL),
       shutting_down_(NULL),
       bg_cv_(&mutex_),
@@ -139,9 +141,9 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
 
   // Reserve ten files or so for other uses and give the rest to TableCache.
   const int table_cache_size = options_.max_open_files - kNumNonTableCacheFiles;
-  table_cache_ = new TableCache(dbname_, &options_, table_cache_size);
+  table_cache_ = new TableCache(storage_dbname_, &options_, table_cache_size);
 
-  versions_ = new VersionSet(dbname_, &options_, table_cache_,
+  versions_ = new VersionSet(storage_dbname_, &options_, table_cache_,
                              &internal_comparator_);
 }
 
@@ -181,7 +183,7 @@ Status DBImpl::NewDB() {
   new_db.SetNextFile(2);
   new_db.SetLastSequence(0);
 
-  const std::string manifest = DescriptorFileName(dbname_, 1);
+  const std::string manifest = DescriptorFileName(storage_dbname_, 1);
   WritableFile* file;
   Status s = env_->NewWritableFile(manifest, &file);
   if (!s.ok()) {
@@ -199,7 +201,7 @@ Status DBImpl::NewDB() {
   delete file;
   if (s.ok()) {
     // Make "CURRENT" file that points to the new manifest file.
-    s = SetCurrentFile(env_, dbname_, 1);
+    s = SetCurrentFile(env_, storage_dbname_, 1);
   } else {
     env_->DeleteFile(manifest);
   }
@@ -227,7 +229,7 @@ void DBImpl::DeleteObsoleteFiles() {
   versions_->AddLiveFiles(&live);
 
   std::vector<std::string> filenames;
-  env_->GetChildren(dbname_, &filenames); // Ignoring errors on purpose
+  env_->GetChildren(storage_dbname_, &filenames); // Ignoring errors on purpose
   uint64_t number;
   FileType type;
   for (size_t i = 0; i < filenames.size(); i++) {
@@ -265,7 +267,7 @@ void DBImpl::DeleteObsoleteFiles() {
         Log(options_.info_log, "Delete type=%d #%lld\n",
             int(type),
             static_cast<unsigned long long>(number));
-        env_->DeleteFile(dbname_ + "/" + filenames[i]);
+        env_->DeleteFile(storage_dbname_ + "/" + filenames[i]);
       }
     }
   }
@@ -277,14 +279,14 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
   // Ignore error from CreateDir since the creation of the DB is
   // committed only when the descriptor is created, and this directory
   // may already exist from a previous failed creation attempt.
-  env_->CreateDir(dbname_);
+  env_->CreateDir(storage_dbname_);
   assert(db_lock_ == NULL);
-  Status s = env_->LockFile(LockFileName(dbname_), &db_lock_);
+  Status s = env_->LockFile(LockFileName(storage_dbname_), &db_lock_);
   if (!s.ok()) {
     return s;
   }
 
-  if (!env_->FileExists(CurrentFileName(dbname_))) {
+  if (!env_->FileExists(CurrentFileName(storage_dbname_))) {
     if (options_.create_if_missing) {
       s = NewDB();
       if (!s.ok()) {
@@ -292,12 +294,12 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
       }
     } else {
       return Status::InvalidArgument(
-          dbname_, "does not exist (create_if_missing is false)");
+          storage_dbname_, "does not exist (create_if_missing is false)");
     }
   } else {
     if (options_.error_if_exists) {
       return Status::InvalidArgument(
-          dbname_, "exists (error_if_exists is true)");
+          storage_dbname_, "exists (error_if_exists is true)");
     }
   }
 
@@ -317,7 +319,7 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
   const uint64_t min_log = versions_->LogNumber();
   const uint64_t prev_log = versions_->PrevLogNumber();
   std::vector<std::string> filenames;
-  s = env_->GetChildren(dbname_, &filenames);
+  s = env_->GetChildren(storage_dbname_, &filenames);
   if (!s.ok()) {
     return s;
   }
@@ -337,7 +339,7 @@ Status DBImpl::Recover(VersionEdit* edit, bool *save_manifest) {
     char buf[50];
     snprintf(buf, sizeof(buf), "%d missing files; e.g.",
              static_cast<int>(expected.size()));
-    return Status::Corruption(buf, TableFileName(dbname_, *(expected.begin())));
+    return Status::Corruption(buf, TableFileName(storage_dbname_, *(expected.begin())));
   }
 
   // Recover in the order in which the logs were generated
@@ -381,7 +383,7 @@ Status DBImpl::RecoverLogFile(uint64_t log_number, bool last_log,
   mutex_.AssertHeld();
 
   // Open the log file
-  std::string fname = LogFileName(dbname_, log_number);
+  std::string fname = LogFileName(storage_dbname_, log_number);
   SequentialFile* file;
   Status status = env_->NewSequentialFile(fname, &file);
   if (!status.ok()) {
@@ -499,7 +501,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
-    s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
+    s = BuildTable(storage_dbname_, env_, options_, table_cache_, iter, &meta);
     mutex_.Lock();
   }
 
@@ -802,7 +804,7 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
   }
 
   // Make the output file
-  std::string fname = TableFileName(dbname_, file_number);
+  std::string fname = TableFileName(storage_dbname_, file_number);
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
     compact->builder = new TableBuilder(options_, compact->outfile);
@@ -1356,7 +1358,7 @@ Status DBImpl::MakeRoomForWrite(bool force) {
       assert(versions_->PrevLogNumber() == 0);
       uint64_t new_log_number = versions_->NewFileNumber();
       WritableFile* lfile = NULL;
-      s = env_->NewWritableFile(LogFileName(dbname_, new_log_number), &lfile);
+      s = env_->NewWritableFile(LogFileName(storage_dbname_, new_log_number), &lfile);
       if (!s.ok()) {
         // Avoid chewing through file number space in a tight loop.
         versions_->ReuseFileNumber(new_log_number);
@@ -1489,9 +1491,11 @@ DB::~DB() { }
 
 Status DB::Open(const Options& options, const std::string& dbname,
                 DB** dbptr) {
+  // return DB::Open(options, dbname, dbname, 0, dbptr);
+
   *dbptr = NULL;
 
-  DBImpl* impl = new DBImpl(options, dbname);
+  DBImpl* impl = new DBImpl(options, dbname, dbname, 0);
   impl->mutex_.Lock();
   VersionEdit edit;
   // Recover handles create_if_missing, error_if_exists
@@ -1528,8 +1532,100 @@ Status DB::Open(const Options& options, const std::string& dbname,
   } else {
     delete impl;
   }
-  return s;
 }
+
+// Status DB::Open(const Options& options, const std::string& name, 
+//                 const std::string& cache_dir, const std::string& storage_dir, 
+//                 const int cache_level_count, DB** dbptr) {
+//   // return DB::Open(options, name + "/" + cache_dir, name + "/" + storage_dir, 
+//   //                 cache_level_count, dbptr);
+//   // return DB::Open(options, name, name, cache_level_count, dbptr);
+
+//   *dbptr = NULL;
+
+//   DBImpl* impl = new DBImpl(options, name, name, cache_level_count);
+//   impl->mutex_.Lock();
+//   VersionEdit edit;
+//   // Recover handles create_if_missing, error_if_exists
+//   bool save_manifest = false;
+//   Status s = impl->Recover(&edit, &save_manifest);
+//   if (s.ok() && impl->mem_ == NULL) {
+//     // Create new log and a corresponding memtable.
+//     uint64_t new_log_number = impl->versions_->NewFileNumber();
+//     WritableFile* lfile;
+//     s = options.env->NewWritableFile(LogFileName(name, new_log_number),
+//                                      &lfile);
+//     if (s.ok()) {
+//       edit.SetLogNumber(new_log_number);
+//       impl->logfile_ = lfile;
+//       impl->logfile_number_ = new_log_number;
+//       impl->log_ = new log::Writer(lfile);
+//       impl->mem_ = new MemTable(impl->internal_comparator_);
+//       impl->mem_->Ref();
+//     }
+//   }
+//   if (s.ok() && save_manifest) {
+//     edit.SetPrevLogNumber(0);  // No older logs needed after recovery.
+//     edit.SetLogNumber(impl->logfile_number_);
+//     s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
+//   }
+//   if (s.ok()) {
+//     impl->DeleteObsoleteFiles();
+//     impl->MaybeScheduleCompaction();
+//   }
+//   impl->mutex_.Unlock();
+//   if (s.ok()) {
+//     assert(impl->mem_ != NULL);
+//     *dbptr = impl;
+//   } else {
+//     delete impl;
+//   }
+// }
+
+// Status DB::Open(const Options& options, 
+//                 const std::string& cache_dbname, const std::string& storage_dbname, 
+//                 const int cache_level_count, DB** dbptr) {
+//   *dbptr = NULL;
+
+//   DBImpl* impl = new DBImpl(options, cache_dbname, storage_dbname, cache_level_count);
+//   impl->mutex_.Lock();
+//   VersionEdit edit;
+//   // Recover handles create_if_missing, error_if_exists
+//   bool save_manifest = false;
+//   Status s = impl->Recover(&edit, &save_manifest);
+//   if (s.ok() && impl->mem_ == NULL) {
+//     // Create new log and a corresponding memtable.
+//     uint64_t new_log_number = impl->versions_->NewFileNumber();
+//     WritableFile* lfile;
+//     s = options.env->NewWritableFile(LogFileName(storage_dbname, new_log_number),
+//                                      &lfile);
+//     if (s.ok()) {
+//       edit.SetLogNumber(new_log_number);
+//       impl->logfile_ = lfile;
+//       impl->logfile_number_ = new_log_number;
+//       impl->log_ = new log::Writer(lfile);
+//       impl->mem_ = new MemTable(impl->internal_comparator_);
+//       impl->mem_->Ref();
+//     }
+//   }
+//   if (s.ok() && save_manifest) {
+//     edit.SetPrevLogNumber(0);  // No older logs needed after recovery.
+//     edit.SetLogNumber(impl->logfile_number_);
+//     s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
+//   }
+//   if (s.ok()) {
+//     impl->DeleteObsoleteFiles();
+//     impl->MaybeScheduleCompaction();
+//   }
+//   impl->mutex_.Unlock();
+//   if (s.ok()) {
+//     assert(impl->mem_ != NULL);
+//     *dbptr = impl;
+//   } else {
+//     delete impl;
+//   }
+//   return s;
+// }
 
 Snapshot::~Snapshot() {
 }
