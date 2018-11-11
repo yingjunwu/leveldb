@@ -20,4 +20,4 @@ if __name__ == "__main__":
       f.write(" ".join(mycmd) + '\n')
       f.flush()
 
-      # subprocess.call(mycmd, stdout=f)
+      subprocess.call(mycmd, stdout=f)

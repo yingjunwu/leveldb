@@ -338,6 +338,8 @@ class Benchmark {
   WriteOptions write_options_;
   int reads_;
   int heap_counter_;
+  std::string storage_dbname_;
+  std::string cache_dbname_;
 
   void PrintHeader() {
     const int kKeySize = 16;
@@ -424,17 +426,48 @@ class Benchmark {
     value_size_(FLAGS_value_size),
     entries_per_batch_(1),
     reads_(FLAGS_reads < 0 ? FLAGS_num : FLAGS_reads),
-    heap_counter_(0) {
-    std::vector<std::string> files;
-    g_env->GetChildren(FLAGS_db, &files);
-    for (size_t i = 0; i < files.size(); i++) {
-      if (Slice(files[i]).starts_with("heap-")) {
-        g_env->DeleteFile(std::string(FLAGS_db) + "/" + files[i]);
+    heap_counter_(0), 
+    storage_dbname_(std::string(FLAGS_storage_dir) + std::string(FLAGS_db)),
+    cache_dbname_(std::string(FLAGS_cache_dir) + std::string(FLAGS_db)) {
+
+    // std::vector<std::string> files;
+    // g_env->GetChildren(FLAGS_db, &files);
+    // for (size_t i = 0; i < files.size(); i++) {
+    //   if (Slice(files[i]).starts_with("heap-")) {
+    //     g_env->DeleteFile(std::string(FLAGS_db) + "/" + files[i]);
+    //   }
+    // }
+    // if (!FLAGS_use_existing_db) {
+    //   DestroyDB(FLAGS_db, Options());
+    // }
+
+
+      if (FLAGS_use_existing_db == false) {
+        // do not use existing db. so delete all files
+        g_env->DeleteDir(storage_dbname_);
+        g_env->DeleteDir(cache_dbname_);
+
+        Status s = g_env->CreateDir(storage_dbname_);
+        assert(s.ok() == true);
+
+        s = g_env->CreateDir(cache_dbname_);
+        assert(s.ok() == true);
+
+      } else {
+
+        g_env->CreateDir(storage_dbname_);
+        g_env->CreateDir(cache_dbname_);
+
+        std::vector<std::string> files;
+        g_env->GetChildren(storage_dbname_, &files);
+        for (size_t i = 0; i < files.size(); i++) {
+          if (Slice(files[i]).starts_with("heap-")) {
+            g_env->DeleteFile(std::string(storage_dbname_) + "/" + files[i]);
+          }
+        }
+
       }
-    }
-    if (!FLAGS_use_existing_db) {
-      DestroyDB(FLAGS_db, Options());
-    }
+
   }
 
   ~Benchmark() {
@@ -549,7 +582,7 @@ class Benchmark {
         } else {
           delete db_;
           db_ = NULL;
-          DestroyDB(FLAGS_db, Options());
+          // DestroyDB(FLAGS_db, Options());
           Open();
         }
       }
@@ -732,7 +765,8 @@ class Benchmark {
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
     options.is_tiering = FLAGS_is_tiering;
-    Status s = DB::Open(options, FLAGS_db, &db_);
+    // Status s = DB::Open(options, FLAGS_db, &db_);
+    Status s = DB::Open(options, cache_dbname_, storage_dbname_, FLAGS_cache_level_count, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
       exit(1);
@@ -949,7 +983,7 @@ class Benchmark {
 
   void HeapProfile() {
     char fname[100];
-    snprintf(fname, sizeof(fname), "%s/heap-%04d", FLAGS_db, ++heap_counter_);
+    snprintf(fname, sizeof(fname), "%s/heap-%04d", storage_dbname_.c_str(), ++heap_counter_);
     WritableFile* file;
     Status s = g_env->NewWritableFile(fname, &file);
     if (!s.ok()) {
@@ -973,7 +1007,6 @@ int main(int argc, char** argv) {
   FLAGS_block_size = leveldb::Options().block_size;
   FLAGS_open_files = leveldb::Options().max_open_files;
   FLAGS_is_tiering = leveldb::Options().is_tiering;
-  std::string default_db_path;
 
   for (int i = 1; i < argc; i++) {
     double d;
@@ -1016,10 +1049,16 @@ int main(int argc, char** argv) {
       FLAGS_db = argv[i] + 5;
     } else if (strncmp(argv[i], "--storage=", 10) == 0) {
       FLAGS_storage_dir = argv[i] + 10;
+      std::cout << "storage = " << FLAGS_storage_dir << std::endl;
+    
     } else if (strncmp(argv[i], "--cache=", 8) == 0) {
       FLAGS_cache_dir = argv[i] + 8;
+      std::cout << "cache = " << FLAGS_cache_dir << std::endl;
+
     } else if (sscanf(argv[i], "--cache_level_count=%d%c", &n, &junk) == 1) {
       FLAGS_cache_level_count = n;
+      std::cout << "cache level count = " << FLAGS_cache_level_count << std::endl;
+
     } else if (sscanf(argv[i], "--is_tiering=%d%c", &n, &junk) == 1 &&
                (n == 0 || n == 1)) {
       FLAGS_is_tiering = n;
@@ -1030,12 +1069,25 @@ int main(int argc, char** argv) {
   }
 
   leveldb::g_env = leveldb::Env::Default();
+  std::string default_dbname = "dbbench";
+  std::string default_storage_dir = "/tmp/";
+  std::string default_cache_dir = "/tmp/";
 
   // Choose a location for the test database if none given with --db=<path>
+  // if (FLAGS_db == NULL) {
+  //     leveldb::g_env->GetTestDirectory(&default_db_path);
+  //     default_db_path += "/dbbench";
+  //     FLAGS_db = default_db_path.c_str();
+  // }
+
   if (FLAGS_db == NULL) {
-      leveldb::g_env->GetTestDirectory(&default_db_path);
-      default_db_path += "/dbbench";
-      FLAGS_db = default_db_path.c_str();
+    FLAGS_db = default_dbname.c_str();
+  }
+  if (FLAGS_storage_dir == NULL) {
+    FLAGS_storage_dir = default_storage_dir.c_str();
+  }
+  if (FLAGS_cache_dir == NULL) {
+    FLAGS_cache_dir = default_cache_dir.c_str();
   }
 
   leveldb::Benchmark benchmark;
