@@ -125,7 +125,7 @@ class DBImpl : public DB {
   const Options options_;  // options_.comparator == &internal_comparator_
   bool owns_info_log_;
   bool owns_cache_;
-  const std::string dbname_;
+  // const std::string dbname_;
   const std::string cache_dbname_;
   const std::string storage_dbname_;
 
