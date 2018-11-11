@@ -25,7 +25,7 @@ class VersionSet;
 
 class DBImpl : public DB {
  public:
-  DBImpl(const Options& options, const std::string& dbname);
+  DBImpl(const Options& options, const std::string& cache_dbname, const std::string& storage_dbname, const int cache_level_count);
   virtual ~DBImpl();
 
   // Implementations of the DB interface
@@ -126,6 +126,10 @@ class DBImpl : public DB {
   bool owns_info_log_;
   bool owns_cache_;
   const std::string dbname_;
+  const std::string cache_dbname_;
+  const std::string storage_dbname_;
+
+  int cache_level_count_;
 
   // table_cache_ provides its own synchronization
   TableCache* table_cache_;
