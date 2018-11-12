@@ -238,7 +238,7 @@ void Version::AddIterators(const ReadOptions& options,
   for (size_t i = 0; i < files_[0].size(); i++) {
     iters->push_back(
         vset_->table_cache_->NewIterator(
-            options, files_[0][i]->number, files_[0][i]->file_size, false));
+            options, files_[0][i]->number, files_[0][i]->file_size, files_[0][i]->is_cached));
   }
 
   // For levels > 0, we can use a concatenating iterator that sequentially
@@ -1277,7 +1277,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
         const std::vector<FileMetaData*>& files = c->inputs_[which];
         for (size_t i = 0; i < files.size(); i++) {
           list[num++] = table_cache_->NewIterator(
-              options, files[i]->number, files[i]->file_size, false);
+              options, files[i]->number, files[i]->file_size, files[i]->is_cached);
         }
       } else {
         // Create concatenating iterator for the files from this level

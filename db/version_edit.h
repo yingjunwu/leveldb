@@ -5,6 +5,7 @@
 #ifndef STORAGE_LEVELDB_DB_VERSION_EDIT_H_
 #define STORAGE_LEVELDB_DB_VERSION_EDIT_H_
 
+#include <iostream>
 #include <set>
 #include <utility>
 #include <vector>
@@ -69,6 +70,7 @@ class VersionEdit {
     f.smallest = smallest;
     f.largest = largest;
     f.is_cached = is_cached;
+    // std::cout << "add file: " << level << " " << f.number << " " << f.is_cached << std::endl;
     new_files_.push_back(std::make_pair(level, f));
   }
 

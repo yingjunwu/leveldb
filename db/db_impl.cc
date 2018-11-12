@@ -870,9 +870,17 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
 
   if (s.ok() && current_entries > 0) {
     // Verify that the table is usable
+    int level = compact->compaction->level() + 1;
+    bool is_cached = false;
+    if (level >= cache_level_count_) {
+      is_cached = false;
+    } else {
+      is_cached = true;
+    }
     Iterator* iter = table_cache_->NewIterator(ReadOptions(),
                                                output_number,
-                                               current_bytes, false);
+                                               current_bytes, 
+                                               is_cached);
     s = iter->status();
     delete iter;
     if (s.ok()) {
@@ -919,11 +927,11 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       compact->compaction->num_input_files(1),
       compact->compaction->level() + 1);
 
-  // printf("Compacting %d@%d + %d@%d files\n",
-  //     compact->compaction->num_input_files(0),
-  //     compact->compaction->level(),
-  //     compact->compaction->num_input_files(1),
-  //     compact->compaction->level() + 1);
+  printf("begin compacting %d@%d + %d@%d files\n",
+      compact->compaction->num_input_files(0),
+      compact->compaction->level(),
+      compact->compaction->num_input_files(1),
+      compact->compaction->level() + 1);
 
 
   assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
@@ -1074,6 +1082,8 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
   VersionSet::LevelSummaryStorage tmp;
   Log(options_.info_log,
       "compacted to: %s", versions_->LevelSummary(&tmp));
+  printf("compacted to: %s\n", versions_->LevelSummary(&tmp));
+
   return status;
 }
 
