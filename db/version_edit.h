@@ -21,8 +21,8 @@ struct FileMetaData {
   uint64_t file_size;         // File size in bytes
   InternalKey smallest;       // Smallest internal key served by table
   InternalKey largest;        // Largest internal key served by table
-
-  FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0) { }
+  bool is_cached;             // whether the file is maintained in caching levels
+  FileMetaData() : refs(0), allowed_seeks(1 << 30), file_size(0), is_cached(false) { }
 };
 
 class VersionEdit {
@@ -62,12 +62,13 @@ class VersionEdit {
   void AddFile(int level, uint64_t file,
                uint64_t file_size,
                const InternalKey& smallest,
-               const InternalKey& largest) {
+               const InternalKey& largest, const bool is_cached = false) {
     FileMetaData f;
     f.number = file;
     f.file_size = file_size;
     f.smallest = smallest;
     f.largest = largest;
+    f.is_cached = is_cached;
     new_files_.push_back(std::make_pair(level, f));
   }
 

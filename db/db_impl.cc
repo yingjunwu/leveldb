@@ -503,10 +503,17 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   Status s;
   {
     mutex_.Unlock();
-    s = BuildTable(storage_dbname_, env_, options_, table_cache_, iter, &meta);
+    if (cache_level_count_ == 0) {
+      // in this case, directly write data into storage dir.
+      meta.is_cached = false;
+      s = BuildTable(storage_dbname_, env_, options_, table_cache_, iter, &meta);
+    } else {
+      // write data into cache dir
+      meta.is_cached = true;
+      s = BuildTable(cache_dbname_, env_, options_, table_cache_, iter, &meta);
+    }
     mutex_.Lock();
   }
-
   Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
       (unsigned long long) meta.number,
       (unsigned long long) meta.file_size,
@@ -525,13 +532,14 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
       level = base->PickLevelForMemTableOutput(min_user_key, max_user_key);
     }
     edit->AddFile(level, meta.number, meta.file_size,
-                  meta.smallest, meta.largest);
+                  meta.smallest, meta.largest, meta.is_cached);
   }
 
   CompactionStats stats;
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
   stats_[level].Add(stats);
+  std::cout << "finished write level 0 table..." << std::endl;
   return s;
 }
 
@@ -694,6 +702,7 @@ void DBImpl::BackgroundCompaction() {
     CompactMemTable();
     return;
   }
+  return;
 
   Compaction* c;
   bool is_manual = (manual_compaction_ != NULL);
@@ -1538,9 +1547,9 @@ Status DB::Open(const Options& options, const std::string& dbname,
 Status DB::Open(const Options& options, const std::string& cache_dbname, const std::string& storage_dbname,
                 const int cache_level_count, DB** dbptr) {
   
-  std::cout << "cache_dbname = " << cache_dbname << std::endl;
-  std::cout << "storage_dbname = " << storage_dbname << std::endl;
-  std::cout << "cache_level_count = " << cache_level_count << std::endl;
+  // std::cout << "cache_dbname = " << cache_dbname << std::endl;
+  // std::cout << "storage_dbname = " << storage_dbname << std::endl;
+  // std::cout << "cache_level_count = " << cache_level_count << std::endl;
   
   *dbptr = NULL;
 

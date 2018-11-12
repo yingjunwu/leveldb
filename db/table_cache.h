@@ -21,6 +21,7 @@ class Env;
 class TableCache {
  public:
   TableCache(const std::string& dbname, const Options* options, int entries);
+  TableCache(const std::string& cache_dbname, const std::string& storage_dbname, const Options* options, int entries);
   ~TableCache();
 
   // Return an iterator for the specified file number (the corresponding
@@ -33,6 +34,7 @@ class TableCache {
   Iterator* NewIterator(const ReadOptions& options,
                         uint64_t file_number,
                         uint64_t file_size,
+                        const bool is_cached, 
                         Table** tableptr = NULL);
 
   // If a seek to internal key "k" in specified file finds an entry,
@@ -49,11 +51,12 @@ class TableCache {
 
  private:
   Env* const env_;
-  const std::string dbname_;
+  const std::string cache_dbname_;
+  const std::string storage_dbname_;
   const Options* options_;
   Cache* cache_;
 
-  Status FindTable(uint64_t file_number, uint64_t file_size, Cache::Handle**);
+  Status FindTable(uint64_t file_number, uint64_t file_size, bool is_cached, Cache::Handle**);
 };
 
 }  // namespace leveldb

@@ -33,7 +33,19 @@ TableCache::TableCache(const std::string& dbname,
                        const Options* options,
                        int entries)
     : env_(options->env),
-      dbname_(dbname),
+      cache_dbname_(dbname),
+      storage_dbname_(dbname),
+      options_(options),
+      cache_(NewLRUCache(entries)) {
+}
+
+TableCache::TableCache(const std::string& cache_dbname,
+                       const std::string& storage_dbname,
+                       const Options* options,
+                       int entries)
+    : env_(options->env),
+      cache_dbname_(cache_dbname),
+      storage_dbname_(storage_dbname),
       options_(options),
       cache_(NewLRUCache(entries)) {
 }
@@ -42,7 +54,7 @@ TableCache::~TableCache() {
   delete cache_;
 }
 
-Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
+Status TableCache::FindTable(uint64_t file_number, uint64_t file_size, const bool is_cached, 
                              Cache::Handle** handle) {
   Status s;
   char buf[sizeof(file_number)];
@@ -50,12 +62,24 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
   Slice key(buf, sizeof(buf));
   *handle = cache_->Lookup(key);
   if (*handle == NULL) {
-    std::string fname = TableFileName(dbname_, file_number);
+    std::string fname;
+    if (is_cached == true) {
+      fname = TableFileName(cache_dbname_, file_number);
+    } else {
+      fname = TableFileName(storage_dbname_, file_number);
+    }
+
     RandomAccessFile* file = NULL;
     Table* table = NULL;
     s = env_->NewRandomAccessFile(fname, &file);
     if (!s.ok()) {
-      std::string old_fname = SSTTableFileName(dbname_, file_number);
+      std::string old_fname;
+      if (is_cached == true) {
+        old_fname = SSTTableFileName(cache_dbname_, file_number);
+      } else {
+        old_fname = SSTTableFileName(storage_dbname_, file_number);
+      }
+
       if (env_->NewRandomAccessFile(old_fname, &file).ok()) {
         s = Status::OK();
       }
@@ -80,6 +104,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size,
 }
 
 Iterator* TableCache::NewIterator(const ReadOptions& options,
+                                  const bool is_cached, 
                                   uint64_t file_number,
                                   uint64_t file_size,
                                   Table** tableptr) {
@@ -88,7 +113,7 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
   }
 
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, is_cached, &handle);
   if (!s.ok()) {
     return NewErrorIterator(s);
   }
@@ -109,7 +134,7 @@ Status TableCache::Get(const ReadOptions& options,
                        void* arg,
                        void (*saver)(void*, const Slice&, const Slice&)) {
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, &handle);
+  Status s = FindTable(file_number, file_size, false, &handle);
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
     s = t->InternalGet(options, k, arg, saver);

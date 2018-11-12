@@ -441,22 +441,26 @@ class Benchmark {
     //   DestroyDB(FLAGS_db, Options());
     // }
 
+      g_env->CreateDir(storage_dbname_);
+      g_env->CreateDir(cache_dbname_);
 
       if (FLAGS_use_existing_db == false) {
+        std::cout << "do not use existing db!" << std::endl;
         // do not use existing db. so delete all files
-        g_env->DeleteDir(storage_dbname_);
-        g_env->DeleteDir(cache_dbname_);
+        std::vector<std::string> storage_files;
+        g_env->GetChildren(storage_dbname_, &storage_files);
+        for (size_t i = 0; i < storage_files.size(); i++) {
+          g_env->DeleteFile(std::string(storage_dbname_) + "/" + storage_files[i]);
+        }
 
-        Status s = g_env->CreateDir(storage_dbname_);
-        assert(s.ok() == true);
-
-        s = g_env->CreateDir(cache_dbname_);
-        assert(s.ok() == true);
+        std::vector<std::string> cache_files;
+        g_env->GetChildren(storage_dbname_, &cache_files);
+        for (size_t i = 0; i < cache_files.size(); i++) {
+          g_env->DeleteFile(std::string(cache_dbname_) + "/" + cache_files[i]);
+        }
 
       } else {
-
-        g_env->CreateDir(storage_dbname_);
-        g_env->CreateDir(cache_dbname_);
+        std::cout << "use existing db!" << std::endl;
 
         std::vector<std::string> files;
         g_env->GetChildren(storage_dbname_, &files);

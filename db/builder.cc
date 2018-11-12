@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
+
 #include "db/builder.h"
 
 #include "db/filename.h"
@@ -62,20 +64,26 @@ Status BuildTable(const std::string& dbname,
       // Verify that the table is usable
       Iterator* it = table_cache->NewIterator(ReadOptions(),
                                               meta->number,
-                                              meta->file_size);
+                                              meta->file_size, 
+                                              meta->is_cached);
       s = it->status();
+      if (s.ok() == false) {
+        std::cout << "status false!!!!" << std::endl;
+      }
       delete it;
     }
   }
 
   // Check for input iterator errors
   if (!iter->status().ok()) {
+    std::cout << "not ok!!!" << std::endl;
     s = iter->status();
   }
 
   if (s.ok() && meta->file_size > 0) {
     // Keep it
   } else {
+    std::cout << "file been deleted... file size = " << meta->file_size << std::endl;
     env->DeleteFile(fname);
   }
   return s;
