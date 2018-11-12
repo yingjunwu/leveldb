@@ -15,9 +15,10 @@ if __name__ == "__main__":
       write_buffer_size = write_buffer_size_i * 1024 * 1024
       block_size = block_size_i * 1024
 
-      mycmd = ['./out-static/db_bench', '--benchmarks=fillrandom,stats,readrandom,stats', '--num=' + str(num_key), '--block_size=' + str(block_size), '--write_buffer_size=' + str(write_buffer_size), '--db=mydb', '--cache=/ssd0/', '--storage=/home/yingjun/']
+      mycmd = ['./out-static/db_bench', '--benchmarks=fillrandom,stats,readrandom,stats', '--num=' + str(num_key), '--block_size=' + str(block_size), '--write_buffer_size=' + str(write_buffer_size), '--db=mydb', '--cache=/tmp/', '--storage=/home/yingjun/']
 
       f.write(" ".join(mycmd) + '\n')
       f.flush()
 
       subprocess.call(mycmd, stdout=f)
+

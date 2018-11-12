@@ -54,7 +54,7 @@ class Repairer {
         owns_cache_(options_.block_cache != options.block_cache),
         next_file_number_(1) {
     // TableCache can be small since we expect each table to be opened once.
-    table_cache_ = new TableCache(dbname_, &options_, 10);
+    table_cache_ = new TableCache(dbname_, dbname_, &options_, 10);
   }
 
   ~Repairer() {
@@ -252,7 +252,7 @@ class Repairer {
     // on checksum verification.
     ReadOptions r;
     r.verify_checksums = options_.paranoid_checks;
-    return table_cache_->NewIterator(r, meta.number, meta.file_size);
+    return table_cache_->NewIterator(r, meta.number, meta.file_size, false);
   }
 
   void ScanTable(uint64_t number) {

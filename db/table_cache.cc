@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
+#include <iostream>
 #include "db/table_cache.h"
 
 #include "db/filename.h"
@@ -29,15 +30,15 @@ static void UnrefEntry(void* arg1, void* arg2) {
   cache->Release(h);
 }
 
-TableCache::TableCache(const std::string& dbname,
-                       const Options* options,
-                       int entries)
-    : env_(options->env),
-      cache_dbname_(dbname),
-      storage_dbname_(dbname),
-      options_(options),
-      cache_(NewLRUCache(entries)) {
-}
+// TableCache::TableCache(const std::string& dbname,
+//                        const Options* options,
+//                        int entries)
+//     : env_(options->env),
+//       cache_dbname_(dbname),
+//       storage_dbname_(dbname),
+//       options_(options),
+//       cache_(NewLRUCache(entries)) {
+// }
 
 TableCache::TableCache(const std::string& cache_dbname,
                        const std::string& storage_dbname,
@@ -68,6 +69,7 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size, const boo
     } else {
       fname = TableFileName(storage_dbname_, file_number);
     }
+    // std::cout << "find table name = " << fname << std::endl;
 
     RandomAccessFile* file = NULL;
     Table* table = NULL;
@@ -99,15 +101,19 @@ Status TableCache::FindTable(uint64_t file_number, uint64_t file_size, const boo
       tf->table = table;
       *handle = cache_->Insert(key, tf, 1, &DeleteEntry);
     }
-  }
+  } 
+  // else {
+  //   std::cout << "found in cache..." << std::endl;
+  // }
   return s;
 }
 
 Iterator* TableCache::NewIterator(const ReadOptions& options,
-                                  const bool is_cached, 
                                   uint64_t file_number,
                                   uint64_t file_size,
+                                  const bool is_cached, 
                                   Table** tableptr) {
+  // std::cout << "new iterator is cached = " << is_cached << std::endl;
   if (tableptr != NULL) {
     *tableptr = NULL;
   }
@@ -130,15 +136,19 @@ Iterator* TableCache::NewIterator(const ReadOptions& options,
 Status TableCache::Get(const ReadOptions& options,
                        uint64_t file_number,
                        uint64_t file_size,
+                       bool is_cached, 
                        const Slice& k,
                        void* arg,
                        void (*saver)(void*, const Slice&, const Slice&)) {
+  // std::cout << "hello world! " << is_cached << std::endl;
   Cache::Handle* handle = NULL;
-  Status s = FindTable(file_number, file_size, false, &handle);
+  Status s = FindTable(file_number, file_size, is_cached, &handle);
   if (s.ok()) {
     Table* t = reinterpret_cast<TableAndFile*>(cache_->Value(handle))->table;
     s = t->InternalGet(options, k, arg, saver);
     cache_->Release(handle);
+  } else {
+    std::cout << "here..." << std::endl;
   }
   return s;
 }

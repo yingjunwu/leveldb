@@ -220,7 +220,8 @@ static Iterator* GetFileIterator(void* arg,
   } else {
     return cache->NewIterator(options,
                               DecodeFixed64(file_value.data()),
-                              DecodeFixed64(file_value.data() + 8));
+                              DecodeFixed64(file_value.data() + 8), 
+                              false);
   }
 }
 
@@ -237,7 +238,7 @@ void Version::AddIterators(const ReadOptions& options,
   for (size_t i = 0; i < files_[0].size(); i++) {
     iters->push_back(
         vset_->table_cache_->NewIterator(
-            options, files_[0][i]->number, files_[0][i]->file_size));
+            options, files_[0][i]->number, files_[0][i]->file_size, false));
   }
 
   // For levels > 0, we can use a concatenating iterator that sequentially
@@ -405,7 +406,7 @@ Status Version::Get(const ReadOptions& options,
       saver.ucmp = ucmp;
       saver.user_key = user_key;
       saver.value = value;
-      s = vset_->table_cache_->Get(options, f->number, f->file_size,
+      s = vset_->table_cache_->Get(options, f->number, f->file_size, f->is_cached, 
                                    ikey, &saver, SaveValue);
       if (!s.ok()) {
         return s;
@@ -1175,7 +1176,7 @@ uint64_t VersionSet::ApproximateOffsetOf(Version* v, const InternalKey& ikey) {
         // approximate offset of "ikey" within the table.
         Table* tableptr;
         Iterator* iter = table_cache_->NewIterator(
-            ReadOptions(), files[i]->number, files[i]->file_size, &tableptr);
+            ReadOptions(), files[i]->number, files[i]->file_size, false, &tableptr);
         if (tableptr != NULL) {
           result += tableptr->ApproximateOffsetOf(ikey.Encode());
         }
@@ -1276,7 +1277,7 @@ Iterator* VersionSet::MakeInputIterator(Compaction* c) {
         const std::vector<FileMetaData*>& files = c->inputs_[which];
         for (size_t i = 0; i < files.size(); i++) {
           list[num++] = table_cache_->NewIterator(
-              options, files[i]->number, files[i]->file_size);
+              options, files[i]->number, files[i]->file_size, false);
         }
       } else {
         // Create concatenating iterator for the files from this level
@@ -1320,6 +1321,7 @@ Compaction* VersionSet::PickCompaction() {
       c->inputs_[0].push_back(current_->files_[level][0]);
     }
   } else if (seek_compaction) {
+    assert(false);
     level = current_->file_to_compact_level_;
     c = new Compaction(options_, level);
     c->inputs_[0].push_back(current_->file_to_compact_);

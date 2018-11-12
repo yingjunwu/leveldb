@@ -20,7 +20,7 @@ class Env;
 
 class TableCache {
  public:
-  TableCache(const std::string& dbname, const Options* options, int entries);
+  // TableCache(const std::string& dbname, const Options* options, int entries);
   TableCache(const std::string& cache_dbname, const std::string& storage_dbname, const Options* options, int entries);
   ~TableCache();
 
@@ -42,6 +42,7 @@ class TableCache {
   Status Get(const ReadOptions& options,
              uint64_t file_number,
              uint64_t file_size,
+             const bool is_cached, 
              const Slice& k,
              void* arg,
              void (*handle_result)(void*, const Slice&, const Slice&));

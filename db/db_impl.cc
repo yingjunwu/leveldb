@@ -143,7 +143,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& cache_dbname, cons
 
   // Reserve ten files or so for other uses and give the rest to TableCache.
   const int table_cache_size = options_.max_open_files - kNumNonTableCacheFiles;
-  table_cache_ = new TableCache(storage_dbname_, &options_, table_cache_size);
+  table_cache_ = new TableCache(cache_dbname_, storage_dbname_, &options_, table_cache_size);
 
   versions_ = new VersionSet(storage_dbname_, &options_, table_cache_,
                              &internal_comparator_);
@@ -505,10 +505,12 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     mutex_.Unlock();
     if (cache_level_count_ == 0) {
       // in this case, directly write data into storage dir.
+      // std::cout << "not cached.." << std::endl;
       meta.is_cached = false;
       s = BuildTable(storage_dbname_, env_, options_, table_cache_, iter, &meta);
     } else {
       // write data into cache dir
+      // std::cout << "go to cached..." << std::endl;
       meta.is_cached = true;
       s = BuildTable(cache_dbname_, env_, options_, table_cache_, iter, &meta);
     }
@@ -539,7 +541,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
   stats.micros = env_->NowMicros() - start_micros;
   stats.bytes_written = meta.file_size;
   stats_[level].Add(stats);
-  std::cout << "finished write level 0 table..." << std::endl;
+  // std::cout << "finished write level 0 table..." << std::endl;
   return s;
 }
 
@@ -702,7 +704,7 @@ void DBImpl::BackgroundCompaction() {
     CompactMemTable();
     return;
   }
-  return;
+  // return;
 
   Compaction* c;
   bool is_manual = (manual_compaction_ != NULL);
@@ -728,12 +730,14 @@ void DBImpl::BackgroundCompaction() {
   if (c == NULL) {
     // Nothing to do
   } else if (!is_manual && c->IsTrivialMove()) {
+  // } else if(!is_manual) {
+    // std::cout << "trivial move happens..." << std::endl;
     // Move file to next level
     assert(c->num_input_files(0) == 1);
     FileMetaData* f = c->input(0, 0);
     c->edit()->DeleteFile(c->level(), f->number);
     c->edit()->AddFile(c->level() + 1, f->number, f->file_size,
-                       f->smallest, f->largest);
+                       f->smallest, f->largest, f->is_cached);
     status = versions_->LogAndApply(c->edit(), &mutex_);
     if (!status.ok()) {
       RecordBackgroundError(status);
@@ -815,7 +819,15 @@ Status DBImpl::OpenCompactionOutputFile(CompactionState* compact) {
   }
 
   // Make the output file
-  std::string fname = TableFileName(storage_dbname_, file_number);
+  std::string fname;
+  // Yingjun: which level the new file is to be installed in
+  int level = compact->compaction->level() + 1;
+  if (level >= cache_level_count_) {
+    fname = TableFileName(storage_dbname_, file_number);
+  } else {
+    fname = TableFileName(cache_dbname_, file_number);
+  }
+
   Status s = env_->NewWritableFile(fname, &compact->outfile);
   if (s.ok()) {
     compact->builder = new TableBuilder(options_, compact->outfile);
@@ -860,7 +872,7 @@ Status DBImpl::FinishCompactionOutputFile(CompactionState* compact,
     // Verify that the table is usable
     Iterator* iter = table_cache_->NewIterator(ReadOptions(),
                                                output_number,
-                                               current_bytes);
+                                               current_bytes, false);
     s = iter->status();
     delete iter;
     if (s.ok()) {
@@ -906,6 +918,13 @@ Status DBImpl::DoCompactionWork(CompactionState* compact) {
       compact->compaction->level(),
       compact->compaction->num_input_files(1),
       compact->compaction->level() + 1);
+
+  // printf("Compacting %d@%d + %d@%d files\n",
+  //     compact->compaction->num_input_files(0),
+  //     compact->compaction->level(),
+  //     compact->compaction->num_input_files(1),
+  //     compact->compaction->level() + 1);
+
 
   assert(versions_->NumLevelFiles(compact->compaction->level()) > 0);
   assert(compact->builder == NULL);
@@ -1157,9 +1176,10 @@ Status DBImpl::Get(const ReadOptions& options,
     mutex_.Lock();
   }
 
-  if (have_stat_update && current->UpdateStats(stats)) {
-    MaybeScheduleCompaction();
-  }
+  // YINGJUN: do not allow compaction during lookups.
+  // if (have_stat_update && current->UpdateStats(stats)) {
+  //   MaybeScheduleCompaction();
+  // }
   mem->Unref();
   if (imm != NULL) imm->Unref();
   current->Unref();
