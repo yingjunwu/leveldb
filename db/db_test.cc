@@ -2203,7 +2203,7 @@ void BM_LogAndApply(int iters, int num_base_files) {
 
   InternalKeyComparator cmp(BytewiseComparator());
   Options options;
-  VersionSet vset(dbname, &options, NULL, &cmp);
+  VersionSet vset(dbname, &options, NULL, &cmp, 0);
   bool save_manifest;
   ASSERT_OK(vset.Recover(&save_manifest));
   VersionEdit vbase;

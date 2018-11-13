@@ -154,9 +154,6 @@ struct LEVELDB_EXPORT Options {
   // Default: NULL
   const FilterPolicy* filter_policy;
 
-  // By default we do leveling. if is_tiering is set to true, then we do tiering.
-  bool is_tiering;
-
   // Create an Options object with default values for all fields.
   Options();
 };

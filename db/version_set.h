@@ -167,7 +167,8 @@ class VersionSet {
   VersionSet(const std::string& dbname,
              const Options* options,
              TableCache* table_cache,
-             const InternalKeyComparator*);
+             const InternalKeyComparator*, 
+             const int leveling_level_count);
   ~VersionSet();
 
   // Apply *edit to the current version to form a new descriptor that
@@ -310,6 +311,8 @@ class VersionSet {
   log::Writer* descriptor_log_;
   Version dummy_versions_;  // Head of circular doubly-linked list of versions.
   Version* current_;        // == dummy_versions_.prev_
+
+  int leveling_level_count_;
 
   // Per-level key at which the next compaction at that level should start.
   // Either an empty string, or a valid InternalKey.

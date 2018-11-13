@@ -115,7 +115,7 @@ Options SanitizeOptions(const std::string& dbname,
   return result;
 }
 
-DBImpl::DBImpl(const Options& raw_options, const std::string& cache_dbname, const std::string& storage_dbname, const int cache_level_count)
+DBImpl::DBImpl(const Options& raw_options, const std::string& cache_dbname, const std::string& storage_dbname, const int cache_level_count, const int leveling_level_count)
     : env_(raw_options.env),
       internal_comparator_(raw_options.comparator),
       internal_filter_policy_(raw_options.filter_policy),
@@ -127,6 +127,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& cache_dbname, cons
       cache_dbname_(cache_dbname),
       storage_dbname_(storage_dbname),
       cache_level_count_(cache_level_count),
+      leveling_level_count_(leveling_level_count),
       db_lock_(NULL),
       shutting_down_(NULL),
       bg_cv_(&mutex_),
@@ -146,7 +147,7 @@ DBImpl::DBImpl(const Options& raw_options, const std::string& cache_dbname, cons
   table_cache_ = new TableCache(cache_dbname_, storage_dbname_, &options_, table_cache_size);
 
   versions_ = new VersionSet(storage_dbname_, &options_, table_cache_,
-                             &internal_comparator_);
+                             &internal_comparator_, leveling_level_count);
 }
 
 DBImpl::~DBImpl() {
@@ -1534,7 +1535,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
                 DB** dbptr) {
   *dbptr = NULL;
 
-  DBImpl* impl = new DBImpl(options, dbname, dbname, 0);
+  DBImpl* impl = new DBImpl(options, dbname, dbname, 0, 0);
   impl->mutex_.Lock();
   VersionEdit edit;
   // Recover handles create_if_missing, error_if_exists
@@ -1575,7 +1576,7 @@ Status DB::Open(const Options& options, const std::string& dbname,
 }
 
 Status DB::Open(const Options& options, const std::string& cache_dbname, const std::string& storage_dbname,
-                const int cache_level_count, DB** dbptr) {
+                const int cache_level_count, const int leveling_level_count, DB** dbptr) {
   
   // std::cout << "cache_dbname = " << cache_dbname << std::endl;
   // std::cout << "storage_dbname = " << storage_dbname << std::endl;
@@ -1583,7 +1584,7 @@ Status DB::Open(const Options& options, const std::string& cache_dbname, const s
   
   *dbptr = NULL;
 
-  DBImpl* impl = new DBImpl(options, cache_dbname, storage_dbname, cache_level_count);
+  DBImpl* impl = new DBImpl(options, cache_dbname, storage_dbname, cache_level_count, leveling_level_count);
   impl->mutex_.Lock();
   VersionEdit edit;
   // Recover handles create_if_missing, error_if_exists

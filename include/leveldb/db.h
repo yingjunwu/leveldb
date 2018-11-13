@@ -56,7 +56,8 @@ class LEVELDB_EXPORT DB {
   static Status Open(const Options& options,
                      const std::string& cache_dbname,
                      const std::string& storage_dbname,
-                     const int cache_level_count,
+                     const int cache_level_count, 
+                     const int leveling_level_count, 
                      DB** dbptr);
 
   DB() { }

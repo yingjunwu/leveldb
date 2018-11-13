@@ -124,8 +124,8 @@ static const char* FLAGS_cache_dir = NULL;
 // number of levels stored in cache_dir
 static int FLAGS_cache_level_count = 0;
 
-// If true, the database uses tiering compaction strategy
-static bool FLAGS_is_tiering = false;
+// number of levels using leveling compaction strategy
+static int FLAGS_leveling_level_count = 0;
 
 namespace leveldb {
 
@@ -768,9 +768,8 @@ class Benchmark {
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
-    options.is_tiering = FLAGS_is_tiering;
     // Status s = DB::Open(options, FLAGS_db, &db_);
-    Status s = DB::Open(options, cache_dbname_, storage_dbname_, FLAGS_cache_level_count, &db_);
+    Status s = DB::Open(options, cache_dbname_, storage_dbname_, FLAGS_cache_level_count, FLAGS_leveling_level_count, &db_);
     if (!s.ok()) {
       fprintf(stderr, "open error: %s\n", s.ToString().c_str());
       exit(1);
@@ -1010,7 +1009,6 @@ int main(int argc, char** argv) {
   FLAGS_max_file_size = leveldb::Options().max_file_size;
   FLAGS_block_size = leveldb::Options().block_size;
   FLAGS_open_files = leveldb::Options().max_open_files;
-  FLAGS_is_tiering = leveldb::Options().is_tiering;
 
   for (int i = 1; i < argc; i++) {
     double d;
@@ -1063,9 +1061,9 @@ int main(int argc, char** argv) {
       FLAGS_cache_level_count = n;
       std::cout << "cache level count = " << FLAGS_cache_level_count << std::endl;
 
-    } else if (sscanf(argv[i], "--is_tiering=%d%c", &n, &junk) == 1 &&
-               (n == 0 || n == 1)) {
-      FLAGS_is_tiering = n;
+    } else if (sscanf(argv[i], "--leveling_level_count=%d%c", &n, &junk) == 1) {
+      FLAGS_leveling_level_count = n;
+
     } else {
       fprintf(stderr, "Invalid flag '%s'\n", argv[i]);
       exit(1);

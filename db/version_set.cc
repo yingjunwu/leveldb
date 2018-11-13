@@ -776,7 +776,8 @@ class VersionSet::Builder {
 VersionSet::VersionSet(const std::string& dbname,
                        const Options* options,
                        TableCache* table_cache,
-                       const InternalKeyComparator* cmp)
+                       const InternalKeyComparator* cmp, 
+                       const int leveling_level_count)
     : env_(options->env),
       dbname_(dbname),
       options_(options),
@@ -790,7 +791,8 @@ VersionSet::VersionSet(const std::string& dbname,
       descriptor_file_(NULL),
       descriptor_log_(NULL),
       dummy_versions_(this),
-      current_(NULL) {
+      current_(NULL),
+      leveling_level_count_(leveling_level_count) {
   AppendVersion(new Version(this));
 }
 

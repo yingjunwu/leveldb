@@ -1,3 +1,14 @@
+**CLOUD-NATIVE LSM**
+
+# Sample Script
+
+```
+./out-static/db_bench --benchmarks=fillrandom,stats,readrandom,stats --num=1000000 --reads=1000 --block_size=1024 --write_buffer_size=4194304 --db=mydb --cache=/your/local/storage/ --storage=/your/remote/storage/ --cache_level_count=2 --leveling_level_count=2
+```
+
+The users are required to configure the storage location (`--storage`), the cache location (`--cache`), the number of levels stored in cache location (`--cache_level_count`), and the number of levels using leveling compaction (`--leveling_level_count`).
+
+
 **LevelDB is a fast key-value storage library written at Google that provides an ordered mapping from string keys to string values.**
 
 [![Build Status](https://travis-ci.org/google/leveldb.svg?branch=master)](https://travis-ci.org/google/leveldb)
